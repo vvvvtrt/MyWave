@@ -1,0 +1,723 @@
+import React, { useState, useEffect } from "react";
+import { api } from "./api";
+import { Camera, MapPin, Heart, MessageCircle, Share2, User, Settings, Home, Users, Plus, Search, Menu, X, Eye, EyeOff, Sun, Moon } from "lucide-react";
+
+export default function App() {
+  const [query, setQuery] = useState("");
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [posts, setPosts] = useState([]);
+  const [activeTab, setActiveTab] = useState("feed");
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+  const [scrollY, setScrollY] = useState(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await api.posts.list();
+        setPosts(data as any);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  async function handleLike(postId) {
+    try {
+      const updated = await api.posts.like(postId);
+      setPosts(prev => prev.map(p => p.id === postId ? updated as any : p));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleAddComment(postId, text) {
+    if (!text) return;
+    try {
+      const c = await api.comments.add({ post_id: postId, text });
+      setPosts(prev => prev.map(p => p.id === postId ? {...p, comments:[...p.comments, c]} : p));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleCreateAdventure() {
+    const title = prompt('Название приключения');
+    if (!title) return;
+    try {
+      const created = await api.posts.create({ title, description: 'Новое приключение, созданное вами.' });
+      setPosts(prev => [created as any, ...prev]);
+      setActiveTab('my');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleAuth(credentials) {
+    try {
+      await api.login(credentials);
+      setIsAuthenticated(true);
+      setShowAuth(false);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (loading) {
+    return <SeaLoading />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className={isDarkMode ? 'dark' : ''}>
+      <div className="min-h-screen relative overflow-hidden">
+        <AnimatedBackground />
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="p-2 rounded-lg bg-white/80 border border-gray-200/80 text-slate-700 hover:bg-white/90 transition-colors backdrop-blur-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
+                  aria-label="Toggle theme"
+                >
+                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-2">Моя волна</h1>
+              <p className="text-white/80">Исследуй, приглашай, запоминай</p>
+            </div>
+            <AuthForm onAuth={handleAuth} />
+          </div>
+        </div>
+      </div>
+      </div>
+    );
+  }
+
+  const headerHeight = Math.max(100, 300 - scrollY * 0.5);
+  const isHeaderCollapsed = scrollY > 200;
+
+  return (
+    <div className={isDarkMode ? 'dark' : ''}>
+    <div className="min-h-screen relative overflow-hidden">
+      <AnimatedBackground />
+      
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="sticky top-0 z-40 p-4 md:p-8">
+          <div className="max-w-2xl mx-auto backdrop-blur-md bg-white/25 border border-gray-200/25 rounded-2xl p-4 shadow-lg text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="md:hidden p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-100 transition-colors dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
+                >
+                  <Menu className="w-5 h-5 text-white" />
+                </button>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Моя волна</h1>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-100 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
+                  aria-label="Toggle theme"
+                >
+                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+                <div className="hidden sm:flex items-center gap-2 rounded-full px-4 py-2 bg-white border border-gray-200 text-slate-700 dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-bold text-white text-sm">А</div>
+                  <span className="text-slate-700 text-sm dark:text-white">Александр</span>
+                </div>
+                <button 
+                  onClick={() => setIsAuthenticated(false)}
+                  className="px-4 py-2 rounded-full bg-white border border-gray-200 text-slate-700 hover:bg-gray-100 transition-colors dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
+                >
+                  Выход
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+
+        <div className="flex max-w-7xl mx-auto">
+          {/* Sidebar */}
+          <aside className={`${sidebarCollapsed ? 'w-16' : 'w-72'} hidden md:block sticky top-0 h-screen p-6 transition-all duration-300`}>
+            <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 rounded-2xl p-4 shadow-lg text-slate-900 h-full dark:bg-black/25 dark:border-black/25 dark:text-white">
+              {!sidebarCollapsed ? (
+                <>
+                  <nav className="space-y-2 text-sm">
+                    <button onClick={() => setActiveTab('feed')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab==='feed' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'hover:bg-white/5 text-slate-700 dark:hover:bg-black/5 dark:text-white/80'} backdrop-blur-sm`}>
+                      <Home className="w-5 h-5" />
+                      Лента
+                    </button>
+                    <button onClick={() => setActiveTab('my')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab==='my' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'hover:bg-white/15 text-slate-700 dark:hover:bg-black/15 dark:text-white/80'} backdrop-blur-sm`}>
+                      <Camera className="w-5 h-5" />
+                      Мои путешествия
+                    </button>
+                    <button onClick={() => setActiveTab('groups')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab==='groups' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'hover:bg-white/15 text-slate-700 dark:hover:bg-black/15 dark:text-white/80'} backdrop-blur-sm`}>
+                      <Users className="w-5 h-5" />
+                      Мои группы
+                    </button>
+                  </nav>
+
+                  <div className="mt-6">
+                  <button onClick={handleCreateAdventure} className="w-full bg-orange-500 border border-orange-600 hover:bg-orange-600 text-white font-semibold px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-colors">
+                      <Plus className="w-5 h-5" />
+                      Создать
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <nav className="space-y-4 flex flex-col items-center">
+                  <button onClick={() => setActiveTab('feed')} className={`p-3 rounded-xl transition-all ${activeTab==='feed' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'hover:bg-white/15 text-slate-700 dark:hover:bg-black/15 dark:text-white/80'} backdrop-blur-sm`}>
+                    <Home className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setActiveTab('my')} className={`p-3 rounded-xl transition-all ${activeTab==='my' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'hover:bg-white/15 text-slate-700 dark:hover:bg-black/15 dark:text-white/80'} backdrop-blur-sm`}>
+                    <Camera className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setActiveTab('groups')} className={`p-3 rounded-xl transition-all ${activeTab==='groups' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'hover:bg-white/15 text-slate-700 dark:hover:bg-black/15 dark:text-white/80'} backdrop-blur-sm`}>
+                    <Users className="w-5 h-5" />
+                  </button>
+                  <button onClick={handleCreateAdventure} className="p-3 rounded-xl bg-orange-500 border border-orange-600 text-white hover:bg-orange-600 transition-colors">
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </nav>
+              )}
+            </div>
+          </aside>
+
+          {/* Main content */}
+          <main className="flex-1 p-4 md:p-8 pb-20">
+            <div className="space-y-6">
+              {/* Search Block */}
+                <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 rounded-2xl p-6 shadow-lg text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
+                <div className="text-center mb-6">
+                  <h2 className="text-3xl font-bold text-slate-900 mb-2 dark:text-white">Чего хочется испытать сегодня?</h2>
+                  <p className="text-slate-600 dark:text-white/70">Найди идеальное приключение для себя</p>
+                </div>
+                <div className="flex gap-3 mb-4">
+                  <input 
+                    value={query} 
+                    onChange={(e)=>setQuery(e.target.value)} 
+                    placeholder="Кофе, прогулка у реки, старая книжная..." 
+                    className="flex-1 rounded-2xl px-6 py-4 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none text-lg backdrop-blur-sm dark:backdrop-blur-md dark:bg-slate-900 dark:border-slate-700 dark:text-white" 
+                  />
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const res = await api.search(query);
+                        setPosts(res as any);
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }} 
+                    className="bg-orange-500 border border-orange-600 px-8 py-4 rounded-2xl font-semibold text-white shadow-lg hover:bg-orange-600 transition-colors"
+                  >
+                    <Search className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Suggestion Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {['Популярные', 'Природа', 'Искусство', 'Еда', 'Спорт', 'Музыка', 'Книги', 'Путешествия'].map(suggestion => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setQuery(suggestion)}
+                      className="px-4 py-2 rounded-full bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 hover:border-gray-200/35 transition-colors text-sm backdrop-blur-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(activeTab==='feed' || activeTab==='my') && (
+                <>
+                  {posts.filter(p => activeTab==='my' ? p.author === 'Вы' : true).map(post => (
+                    <AdventureCard key={post.id} post={post} onLike={handleLike} onComment={handleAddComment} />
+                  ))}
+                </>
+              )}
+
+              {activeTab === 'groups' && (
+                <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-8 rounded-3xl text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
+                  <h3 className="text-2xl font-semibold text-slate-900 mb-6 dark:text-white">Ваши группы</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {mockGroups().map(g => (
+                      <div key={g.id} className="p-6 rounded-2xl bg-white/25 border border-gray-200/25 text-slate-900 backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
+                        <div className="font-semibold text-slate-900 text-lg dark:text-white">{g.name}</div>
+                        <div className="text-sm text-slate-600 mt-1 dark:text-white/60">{g.members.length} участников</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+
+        {/* Mobile bottom navigation */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 backdrop-blur-md bg-white/25 border-t border-gray-200/25 p-4 dark:bg-black/25 dark:border-black/25">
+          <div className="flex justify-around">
+            <button onClick={() => setActiveTab('feed')} className={`p-3 rounded-xl ${activeTab==='feed' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'text-slate-700 dark:text-white/70'} backdrop-blur-sm`}>
+              <Home className="w-6 h-6" />
+            </button>
+            <button onClick={() => setActiveTab('my')} className={`p-3 rounded-xl ${activeTab==='my' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'text-slate-700 dark:text-white/70'} backdrop-blur-sm`}>
+              <Camera className="w-6 h-6" />
+            </button>
+            <button onClick={handleCreateAdventure} className="p-3 rounded-xl bg-orange-500 border border-orange-600 text-white hover:bg-orange-600 transition-colors">
+              <Plus className="w-6 h-6" />
+            </button>
+            <button onClick={() => setActiveTab('groups')} className={`p-3 rounded-xl ${activeTab==='groups' ? 'bg-white/25 text-orange-600 dark:bg-black/25 dark:text-orange-300' : 'text-slate-700 dark:text-white/70'} backdrop-blur-sm`}>
+              <Users className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  );
+}
+
+function AuthForm({ onAuth }) {
+  const [mode, setMode] = useState('login');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    name: '',
+    confirmPassword: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onAuth(formData);
+  };
+
+  return (
+                <div className="rounded-3xl p-8 border shadow-2xl bg-white/25 border-gray-200/25 text-slate-900 backdrop-blur-sm dark:backdrop-blur-md dark:bg-black/25 dark:border-black/25 dark:text-white">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-slate-900 mb-2 dark:text-white">
+          {mode === 'login' ? 'Добро пожаловать' : 'Создать аккаунт'}
+        </h2>
+        <p className="text-slate-600 dark:text-white/70">
+          {mode === 'login' ? 'Войдите, чтобы продолжить' : 'Присоединяйтесь к сообществу'}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {mode === 'register' && (
+          <div>
+            <input
+              type="text"
+              placeholder="Ваше имя"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+            />
+          </div>
+        )}
+
+        <div>
+          <input
+            type="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+          />
+        </div>
+
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Пароль"
+            value={formData.password}
+            onChange={(e) => setFormData({...formData, password: e.target.value})}
+            className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors pr-12 backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white/80"
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {mode === 'register' && (
+          <div>
+            <input
+              type="password"
+              placeholder="Подтвердите пароль"
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+            />
+          </div>
+        )}
+
+        <button 
+          type="submit"
+          className="w-full bg-orange-500 border border-orange-600 hover:bg-orange-600 text-white font-semibold px-4 py-3 rounded-xl shadow-lg transition-colors"
+        >
+          {mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
+        </button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <button
+          onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+          className="text-slate-600 hover:text-slate-800 transition-all dark:text-white/70 dark:hover:text-white"
+        >
+          {mode === 'login' ? 'Нет аккаунта? Создать' : 'Уже есть аккаунт? Войти'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AdventureCard({ post, onLike, onComment }) {
+  const [comment, setComment] = useState('');
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+
+  return (
+    <article className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-4 rounded-2xl text-slate-900 shadow-xl dark:bg-black/25 dark:border-black/25 dark:text-white">
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-bold text-white text-sm">
+          {post.author[0]}
+        </div>
+        <div className="flex-1">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-white">{post.title}</h3>
+              <div className="text-xs text-slate-600 dark:text-white/60">{post.author} • {formatDate(post.id)}</div>
+            </div>
+            <button className="p-1 rounded-full hover:bg-gray-100 transition-all dark:hover:bg-black/25">
+              <Share2 className="w-4 h-4 text-white/60" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-slate-800 mb-3 leading-relaxed text-sm dark:text-white/90">{post.description}</p>
+
+      {/* Photo Gallery */}
+      {post.photos && post.photos.length > 0 && (
+        <div className="mb-4">
+          <div className="grid grid-cols-3 gap-1 rounded-xl overflow-hidden">
+            {(showAllPhotos ? post.photos : post.photos.slice(0, 4)).map((photo, index) => (
+              <div 
+                key={index} 
+                className={`relative aspect-square bg-gradient-to-br ${photo.gradient} overflow-hidden ${
+                  index === 3 && !showAllPhotos && post.photos.length > 4 ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => {
+                  if (index === 3 && !showAllPhotos && post.photos.length > 4) {
+                    setShowAllPhotos(true);
+                  }
+                }}
+              >
+                <div className="absolute inset-0 backdrop-blur-sm bg-black/25 flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-white/80" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                <div className="absolute bottom-2 left-2 text-white text-sm font-medium">
+                  {photo.location}
+                </div>
+                {index === 3 && !showAllPhotos && post.photos.length > 4 && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <div className="text-white text-lg font-bold">+{post.photos.length - 4}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Route Map */}
+      <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-black/25">
+        <MiniMap route={post.route} />
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200 dark:border-black/25">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => onLike(post.id)} 
+            className={`flex items-center gap-1 px-3 py-1 rounded-full transition-all text-sm ${
+              post.liked ? 'bg-red-500/25 text-red-300' : 'bg-white/25 text-slate-700 hover:bg-white/35 dark:bg-black/25 dark:text-white/80 dark:hover:bg-black/35'
+            } backdrop-blur-sm`}
+          >
+            <Heart className={`w-4 h-4 ${post.liked ? 'fill-current' : ''}`} />
+            {post.likes}
+          </button>
+          <button className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/25 text-slate-700 hover:bg-white/35 transition-all text-sm backdrop-blur-sm dark:bg-black/25 dark:text-white/80 dark:hover:bg-black/35">
+            <MessageCircle className="w-4 h-4" />
+            {post.comments.length}
+          </button>
+        </div>
+        <div className="flex items-center gap-1 text-slate-600 text-xs dark:text-white/70">
+          <MapPin className="w-3 h-3" />
+          {post.route.length} точек
+        </div>
+      </div>
+
+      {/* Comments */}
+      <div className="space-y-2">
+        {post.comments.map(c => (
+          <div key={c.id} className="flex items-start gap-2">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+              {c.author[0]}
+            </div>
+            <div className="flex-1 bg-white/25 border border-gray-200/25 rounded-xl px-3 py-2 text-slate-900 backdrop-blur-sm dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
+              <div className="font-semibold text-slate-900 text-xs mb-1 dark:text-white">{c.author}</div>
+              <div className="text-slate-800 text-xs dark:text-white/90">{c.text}</div>
+            </div>
+          </div>
+        ))}
+
+        <div className="flex gap-2 mt-3">
+          <input 
+            value={comment} 
+            onChange={(e)=>setComment(e.target.value)} 
+            placeholder="Оставить комментарий" 
+            className="flex-1 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors text-sm backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white" 
+          />
+          <button 
+            onClick={() => { onComment(post.id, comment); setComment(''); }} 
+            className="bg-orange-500 border border-orange-600 px-4 py-2 rounded-xl text-white font-semibold hover:bg-orange-600 transition-colors text-sm"
+          >
+            Отправить
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MiniMap({ route }) {
+  const w = 680, h = 120;
+  const points = route.map((p,i) => `${20 + i*120},${20 + (i%2?50:25)}`).join(' ');
+  
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-32 bg-gradient-to-r from-blue-900/20 to-purple-900/20">
+        <defs>
+          <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#FB923C" />
+            <stop offset="50%" stopColor="#F59E0B" />
+            <stop offset="100%" stopColor="#EF4444" />
+          </linearGradient>
+        </defs>
+        <polyline 
+          points={points} 
+          fill="none" 
+          stroke="url(#routeGradient)" 
+          strokeWidth="4" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+        />
+        {route.map((r,i)=> (
+          <circle 
+            key={i} 
+            cx={20 + i*120} 
+            cy={20 + (i%2?60:30)} 
+            r={8} 
+            fill="#fff" 
+            stroke="url(#routeGradient)" 
+            strokeWidth={3} 
+          />
+        ))}
+      </svg>
+      <div className="absolute right-4 bottom-4">
+        <button className="px-4 py-2 rounded-full bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35">
+          Открыть карту
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AnimatedBackground() {
+  return (
+    <div className="fixed inset-0 -z-10 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-800"></div>
+      
+      {/* Animated gradient orbs */}
+      <div className="absolute top-0 left-0 w-full h-full">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-orange-400/30 to-pink-400/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-gradient-to-r from-blue-400/20 to-purple-400/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-gradient-to-r from-green-400/20 to-blue-400/30 rounded-full blur-3xl animate-pulse delay-2000"></div>
+        <div className="absolute bottom-1/3 right-1/3 w-64 h-64 bg-gradient-to-r from-yellow-400/25 to-orange-400/35 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
+      
+      {/* Floating particles */}
+      <div className="absolute inset-0">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 bg-black/25 rounded-full animate-ping"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${3 + Math.random() * 2}s`
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SeaLoading() {
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      <AnimatedBackground />
+      <div className="relative z-10 flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="mb-8">
+            <svg width="240" height="100" viewBox="0 0 240 100" className="mx-auto">
+              <defs>
+                <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#FB923C" />
+                  <stop offset="50%" stopColor="#F59E0B" />
+                  <stop offset="100%" stopColor="#EF4444" />
+                </linearGradient>
+              </defs>
+              <path 
+                d="M0 50 Q60 20 120 50 T240 50" 
+                stroke="url(#waveGradient)" 
+                strokeWidth="6" 
+                strokeLinecap="round" 
+                fill="none"
+              >
+                <animate 
+                  attributeName="d" 
+                  dur="3s" 
+                  repeatCount="indefinite" 
+                  values="M0 50 Q60 20 120 50 T240 50; M0 50 Q60 80 120 50 T240 50; M0 50 Q60 20 120 50 T240 50" 
+                />
+              </path>
+            </svg>
+          </div>
+          <div className="text-3xl font-bold text-white mb-4">Готовим приключение...</div>
+          <div className="text-lg text-white/70">Пока мы собираем идеи, представь море и лёгкий бриз</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------- Mock data & helpers -----------------
+
+function mockPosts() {
+  return [
+    {
+      id: Date.now() - 1000*60*60*24*7,
+      title: 'Вечер у причала и джаз',
+      author: 'Ольга',
+      route: sampleRoute(),
+      photos: [
+        { gradient: 'from-blue-500 to-cyan-400', location: 'Набережная' },
+        { gradient: 'from-orange-500 to-yellow-400', location: 'Кофейня' },
+        { gradient: 'from-purple-500 to-pink-400', location: 'Джаз-клуб' },
+      ],
+      likes: 12,
+      liked: false,
+      comments: [{id:1,author:'Пётр',text:'Было нереально!'}],
+      description: 'Небольшая прогулка вдоль набережной, остановка в кофейне и джаз на вечере. Отличные фото у моста и невероятная атмосфера в клубе. Рекомендую всем любителям спокойных вечеров с хорошей музыкой.',
+    },
+    {
+      id: Date.now() - 1000*60*60*24*2,
+      title: 'Книжный квест в старом подвальчике',
+      author: 'Иван',
+      route: sampleRoute(4),
+      photos: [
+        { gradient: 'from-amber-500 to-orange-400', location: 'Антикварная лавка' },
+        { gradient: 'from-green-500 to-emerald-400', location: 'Букинистический магазин' },
+        { gradient: 'from-red-500 to-rose-400', location: 'Уютная кофейня' },
+        { gradient: 'from-indigo-500 to-purple-400', location: 'Библиотека' },
+        { gradient: 'from-teal-500 to-cyan-400', location: 'Книжный клуб' },
+      ],
+      likes: 7,
+      liked: false,
+      comments: [{id:2,author:'Мария',text:'Нашли редкую книгу :)'}],
+      description: 'Искали редкие томы в старых лавках и закончили в уютной кофейне. Удивительное путешествие по книжным местам города с находками и открытиями.',
+    },
+    {
+      id: Date.now() - 1000*60*60*24*1,
+      title: 'Фотосессия на рассвете у моря',
+      author: 'Анна',
+      route: sampleRoute(3),
+      photos: [
+        { gradient: 'from-pink-400 to-rose-300', location: 'Пляж' },
+        { gradient: 'from-orange-400 to-amber-300', location: 'Скалы' },
+        { gradient: 'from-blue-400 to-cyan-300', location: 'Маяк' },
+      ],
+      likes: 24,
+      liked: true,
+      comments: [
+        {id:3,author:'Дима',text:'Какие краски! 🌅'},
+        {id:4,author:'Лена',text:'Хочу тоже так!'}
+      ],
+      description: 'Встали в 5 утра ради этих кадров! Золотой час у моря, розовые облака и невероятные отражения в воде. Каждая минута стоила раннего подъема.',
+    }
+  ];
+}
+
+function mockPhotos() {
+  return [
+    { gradient: 'from-blue-500 to-cyan-400', location: 'Парк' },
+    { gradient: 'from-green-500 to-emerald-400', location: 'Кафе' },
+    { gradient: 'from-purple-500 to-pink-400', location: 'Музей' },
+    { gradient: 'from-orange-500 to-yellow-400', location: 'Мост' },
+    { gradient: 'from-red-500 to-rose-400', location: 'Площадь' },
+  ];
+}
+
+function mockGroups() {
+  return [
+    {id:1, name:'Фотосъемки по выходным', members:['Аня','Дима','Ты']},
+    {id:2, name:'Книжные субботы', members:['Лена','Иван']},
+    {id:3, name:'Кофейные маршруты', members:['Ольга','Петр','Мария']},
+    {id:4, name:'Рассветы и закаты', members:['Анна','Максим']},
+  ];
+}
+
+function sampleRoute(n=3) {
+  return Array.from({length:n}).map((_,i)=>({
+    lat:55.7 + i*0.002, 
+    lng:37.6 + i*0.003, 
+    name:`Точка ${i+1}`
+  }));
+}
+
+function formatDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = now - d;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  
+  if (days === 0) return 'Сегодня';
+  if (days === 1) return 'Вчера';
+  if (days < 7) return `${days} дня назад`;
+  return d.toLocaleDateString('ru-RU');
+}
