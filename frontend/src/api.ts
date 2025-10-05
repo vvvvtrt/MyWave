@@ -25,8 +25,17 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => http<{ status: string }>(`/health`),
-  login: (payload: { email?: string; password?: string; name?: string }) =>
-    http<{ token: string; user: { id: number; name: string; email: string } }>(`/auth/login`, {
+  login: (payload: { email?: string; password?: string }) =>
+    http<{ access_token: string; token_type: string }>(`/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        username: payload.email || '',
+        password: payload.password || ''
+      }).toString(),
+    }),
+  register: (payload: { email?: string; password?: string; username?: string; full_name?: string }) =>
+    http<{ access_token: string; token_type: string }>(`/auth/register`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),

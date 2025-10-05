@@ -64,7 +64,23 @@ export default function App() {
 
   async function handleAuth(credentials: any) {
     try {
-      await api.login(credentials);
+      if (credentials.mode === 'register') {
+        // Преобразуем данные для регистрации
+        const registerData = {
+          email: credentials.email,
+          username: credentials.name,
+          password: credentials.password,
+          full_name: credentials.name
+        };
+        await api.register(registerData);
+      } else {
+        // Для входа используем email как username
+        const loginData = {
+          email: credentials.email,
+          password: credentials.password
+        };
+        await api.login(loginData);
+      }
       setIsAuthenticated(true);
       // setShowAuth(false);
     } catch (e) {
@@ -303,7 +319,7 @@ function AuthForm({ onAuth }: { onAuth: (credentials: any) => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAuth(formData);
+    onAuth({ ...formData, mode });
   };
 
   return (
