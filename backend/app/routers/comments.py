@@ -33,4 +33,16 @@ def add_comment(
     db.commit()
     db.refresh(comment)
     
-    return comment
+    # Get author name
+    author_name = "Пользователь"
+    if hasattr(comment, 'author') and comment.author:
+        if hasattr(comment.author, 'username'):
+            author_name = comment.author.username
+        elif hasattr(comment.author, 'full_name') and comment.author.full_name:
+            author_name = comment.author.full_name
+    
+    return {
+        "id": comment.id,
+        "text": comment.text,
+        "author": author_name
+    }

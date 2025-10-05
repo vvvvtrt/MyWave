@@ -39,7 +39,19 @@ export default function App() {
   async function handleLike(postId: any) {
     try {
       const updated = await api.posts.like(postId);
-      setPosts((prev: any[]) => prev.map((p: any) => p.id === postId ? updated as any : p));
+      // Ensure the updated post has the correct format
+      const formattedPost = {
+        id: updated.id,
+        title: updated.title,
+        description: updated.description || "",
+        author: updated.author || "Пользователь",
+        likes: updated.likes || 0,
+        liked: updated.liked || false,
+        comments: updated.comments || [],
+        photos: updated.photos || [],
+        route: updated.route || []
+      };
+      setPosts((prev: any[]) => prev.map((p: any) => p.id === postId ? formattedPost : p));
     } catch (e) {
       console.error('Error liking post:', e);
       // Fallback: just toggle the liked state locally
@@ -53,7 +65,13 @@ export default function App() {
     if (!text) return;
     try {
       const c = await api.comments.add({ post_id: postId, text });
-      setPosts((prev: any[]) => prev.map((p: any) => p.id === postId ? {...p, comments:[...p.comments, c]} : p));
+      // Ensure the comment has the correct format
+      const formattedComment = {
+        id: c.id,
+        text: c.text,
+        author: c.author || "Пользователь"
+      };
+      setPosts((prev: any[]) => prev.map((p: any) => p.id === postId ? {...p, comments:[...p.comments, formattedComment]} : p));
     } catch (e) {
       console.error('Error adding comment:', e);
       // Fallback: add comment locally
