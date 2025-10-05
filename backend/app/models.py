@@ -1,18 +1,63 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
+from datetime import datetime
 
 
-class User(BaseModel):
+class UserBase(BaseModel):
+    email: EmailStr
+    username: str
+    full_name: Optional[str] = None
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=4, max_length=72)
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class User(UserBase):
     id: int
-    name: str
-    email: str
+    is_active: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
-class Comment(BaseModel):
+class UserProfile(User):
+    posts_count: int = 0
+    likes_count: int = 0
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
+class CommentBase(BaseModel):
+    text: str
+
+
+class CommentCreate(CommentBase):
+    post_id: int
+
+
+class Comment(CommentBase):
     id: int
     post_id: int
-    text: str
-    author: str
+    author_id: int
+    author: User
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class RoutePoint(BaseModel):
@@ -20,37 +65,37 @@ class RoutePoint(BaseModel):
     lng: float
 
 
-class Post(BaseModel):
+class Photo(BaseModel):
     id: int
+    url: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class PostBase(BaseModel):
     title: str
-    author: str
     description: Optional[str] = None
-    likes: int = 0
-    liked: bool = False
-    comments: List[Comment] = Field(default_factory=list)
-    route: List[RoutePoint] = Field(default_factory=list)
+
+
+class PostCreate(PostBase):
     photos: List[str] = Field(default_factory=list)
 
 
-class AuthRequest(BaseModel):
-    email: str = ""
-    password: str = ""
-    name: Optional[str] = None
-
-
-class AuthResponse(BaseModel):
-    token: str
-    user: User
-
-
-class CreatePostRequest(BaseModel):
-    title: str
-    description: Optional[str] = None
-
-
-class CreateCommentRequest(BaseModel):
-    post_id: int
-    text: str
+class Post(PostBase):
+    id: int
+    author_id: int
+    author: User
+    likes_count: int
+    liked: bool = False
+    comments: List[Comment] = Field(default_factory=list)
+    photos: List[Photo] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class Group(BaseModel):

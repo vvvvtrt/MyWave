@@ -1,33 +1,36 @@
 from typing import List
-from fastapi import APIRouter, HTTPException
-from ..models import Comment, CreateCommentRequest
-from ..data import POSTS
-
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+from ..database import get_db, Comment as CommentModel, Post as PostModel
+from ..models import Comment, CommentCreate
 
 router = APIRouter()
 
 
-@router.get("/by-post/{post_id}", response_model=List[Comment])
-def list_comments(post_id: int):
-    for post in POSTS:
-        if post.id == post_id:
-            return post.comments
-    raise HTTPException(status_code=404, detail="Post not found")
+@router.get("/by-post/{post_id}")
+def list_comments(post_id: int, db: Session = Depends(get_db)):
+    comments = db.query(CommentModel).filter(CommentModel.post_id == post_id).all()
+    return comments
 
 
-@router.post("/", response_model=Comment)
-def add_comment(payload: CreateCommentRequest):
-    for post in POSTS:
-        if post.id == payload.post_id:
-            new_comment = Comment(
-                id=max([c.id for c in post.comments], default=0) + 1,
-                post_id=post.id,
-                text=payload.text,
-                author="Вы",
-            )
-            post.comments.append(new_comment)
-            return new_comment
-    raise HTTPException(status_code=404, detail="Post not found")
-
-
-
+@router.post("/")
+def add_comment(
+    payload: CommentCreate, 
+    db: Session = Depends(get_db)
+):
+    # Check if post exists
+    post = db.query(PostModel).filter(PostModel.id == payload.post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Create comment
+    comment = CommentModel(
+        text=payload.text,
+        post_id=payload.post_id,
+        author_id=1  # Default user for now
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    
+    return comment

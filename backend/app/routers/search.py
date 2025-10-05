@@ -1,18 +1,28 @@
 from typing import List
-from fastapi import APIRouter, Query
-from ..models import Post
-from ..data import POSTS
+from fastapi import APIRouter, Query, Depends
+from ..database import get_db, Post as PostModel
+from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Post])
-def search_posts(q: str = Query("") ):
+@router.get("/")
+def search_posts(q: str = Query(""), db: Session = Depends(get_db)):
     term = q.strip().lower()
     if not term:
-        return POSTS
-    return [p for p in POSTS if term in p.title.lower() or (p.description or "").lower().find(term) >= 0]
+        return []
+    
+    # Поиск по заголовку и описанию
+    posts = db.query(PostModel).filter(
+        or_(
+            PostModel.title.ilike(f"%{term}%"),
+            PostModel.description.ilike(f"%{term}%")
+        )
+    ).all()
+    
+    return posts
 
 
 

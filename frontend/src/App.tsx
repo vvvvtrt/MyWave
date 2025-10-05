@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { api } from "./api";
-import { Camera, MapPin, Heart, MessageCircle, Share2, User, Settings, Home, Users, Plus, Search, Menu, X, Eye, EyeOff, Sun, Moon } from "lucide-react";
+import { Camera, MapPin, Heart, MessageCircle, Share2, Home, Users, Plus, Search, Menu, Eye, EyeOff, Sun, Moon } from "lucide-react";
 
 export default function App() {
   const [query, setQuery] = useState("");
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("feed");
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
-  const [scrollY, setScrollY] = useState(0);
+  // const [scrollY, setScrollY] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
@@ -28,26 +25,26 @@ export default function App() {
     })();
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // useEffect(() => {
+  //   const handleScroll = () => setScrollY(window.scrollY);
+  //   window.addEventListener('scroll', handleScroll);
+  //   return () => window.removeEventListener('scroll', handleScroll);
+  // }, []);
 
-  async function handleLike(postId) {
+  async function handleLike(postId: any) {
     try {
       const updated = await api.posts.like(postId);
-      setPosts(prev => prev.map(p => p.id === postId ? updated as any : p));
+      setPosts(prev => prev.map((p: any) => p.id === postId ? updated as any : p));
     } catch (e) {
       console.error(e);
     }
   }
 
-  async function handleAddComment(postId, text) {
+  async function handleAddComment(postId: any, text: string) {
     if (!text) return;
     try {
       const c = await api.comments.add({ post_id: postId, text });
-      setPosts(prev => prev.map(p => p.id === postId ? {...p, comments:[...p.comments, c]} : p));
+      setPosts(prev => prev.map((p: any) => p.id === postId ? {...p, comments:[...p.comments, c]} : p));
     } catch (e) {
       console.error(e);
     }
@@ -65,11 +62,11 @@ export default function App() {
     }
   }
 
-  async function handleAuth(credentials) {
+  async function handleAuth(credentials: any) {
     try {
       await api.login(credentials);
       setIsAuthenticated(true);
-      setShowAuth(false);
+      // setShowAuth(false);
     } catch (e) {
       console.error(e);
     }
@@ -107,8 +104,8 @@ export default function App() {
     );
   }
 
-  const headerHeight = Math.max(100, 300 - scrollY * 0.5);
-  const isHeaderCollapsed = scrollY > 200;
+  // const headerHeight = Math.max(100, 300 - scrollY * 0.5);
+  // const isHeaderCollapsed = scrollY > 200;
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
@@ -248,7 +245,7 @@ export default function App() {
 
               {(activeTab==='feed' || activeTab==='my') && (
                 <>
-                  {posts.filter(p => activeTab==='my' ? p.author === 'Вы' : true).map(post => (
+                  {posts.filter((p: any) => activeTab==='my' ? p.author === 'Вы' : true).map((post: any) => (
                     <AdventureCard key={post.id} post={post} onLike={handleLike} onComment={handleAddComment} />
                   ))}
                 </>
@@ -258,7 +255,7 @@ export default function App() {
                 <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-8 rounded-3xl text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
                   <h3 className="text-2xl font-semibold text-slate-900 mb-6 dark:text-white">Ваши группы</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {mockGroups().map(g => (
+                    {mockGroups().map((g: any) => (
                       <div key={g.id} className="p-6 rounded-2xl bg-white/25 border border-gray-200/25 text-slate-900 backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
                         <div className="font-semibold text-slate-900 text-lg dark:text-white">{g.name}</div>
                         <div className="text-sm text-slate-600 mt-1 dark:text-white/60">{g.members.length} участников</div>
@@ -294,7 +291,7 @@ export default function App() {
   );
 }
 
-function AuthForm({ onAuth }) {
+function AuthForm({ onAuth }: { onAuth: (credentials: any) => void }) {
   const [mode, setMode] = useState('login');
   const [formData, setFormData] = useState({
     email: '',
@@ -304,7 +301,7 @@ function AuthForm({ onAuth }) {
   });
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAuth(formData);
   };
@@ -392,7 +389,7 @@ function AuthForm({ onAuth }) {
   );
 }
 
-function AdventureCard({ post, onLike, onComment }) {
+function AdventureCard({ post, onLike, onComment }: { post: any, onLike: (id: any) => void, onComment: (id: any, text: string) => void }) {
   const [comment, setComment] = useState('');
   const [showAllPhotos, setShowAllPhotos] = useState(false);
 
@@ -421,7 +418,7 @@ function AdventureCard({ post, onLike, onComment }) {
       {post.photos && post.photos.length > 0 && (
         <div className="mb-4">
           <div className="grid grid-cols-3 gap-1 rounded-xl overflow-hidden">
-            {(showAllPhotos ? post.photos : post.photos.slice(0, 4)).map((photo, index) => (
+            {(showAllPhotos ? post.photos : post.photos.slice(0, 4)).map((photo: any, index: number) => (
               <div 
                 key={index} 
                 className={`relative aspect-square bg-gradient-to-br ${photo.gradient} overflow-hidden ${
@@ -481,7 +478,7 @@ function AdventureCard({ post, onLike, onComment }) {
 
       {/* Comments */}
       <div className="space-y-2">
-        {post.comments.map(c => (
+        {post.comments.map((c: any) => (
           <div key={c.id} className="flex items-start gap-2">
             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
               {c.author[0]}
@@ -512,9 +509,9 @@ function AdventureCard({ post, onLike, onComment }) {
   );
 }
 
-function MiniMap({ route }) {
+function MiniMap({ route }: { route: any[] }) {
   const w = 680, h = 120;
-  const points = route.map((p,i) => `${20 + i*120},${20 + (i%2?50:25)}`).join(' ');
+  const points = route.map((_p: any, i: number) => `${20 + i*120},${20 + (i%2?50:25)}`).join(' ');
   
   return (
     <div className="relative">
@@ -534,7 +531,7 @@ function MiniMap({ route }) {
           strokeLinecap="round" 
           strokeLinejoin="round" 
         />
-        {route.map((r,i)=> (
+        {route.map((_r: any, i: number) => (
           <circle 
             key={i} 
             cx={20 + i*120} 
@@ -628,70 +625,70 @@ function SeaLoading() {
 
 // ----------------- Mock data & helpers -----------------
 
-function mockPosts() {
-  return [
-    {
-      id: Date.now() - 1000*60*60*24*7,
-      title: 'Вечер у причала и джаз',
-      author: 'Ольга',
-      route: sampleRoute(),
-      photos: [
-        { gradient: 'from-blue-500 to-cyan-400', location: 'Набережная' },
-        { gradient: 'from-orange-500 to-yellow-400', location: 'Кофейня' },
-        { gradient: 'from-purple-500 to-pink-400', location: 'Джаз-клуб' },
-      ],
-      likes: 12,
-      liked: false,
-      comments: [{id:1,author:'Пётр',text:'Было нереально!'}],
-      description: 'Небольшая прогулка вдоль набережной, остановка в кофейне и джаз на вечере. Отличные фото у моста и невероятная атмосфера в клубе. Рекомендую всем любителям спокойных вечеров с хорошей музыкой.',
-    },
-    {
-      id: Date.now() - 1000*60*60*24*2,
-      title: 'Книжный квест в старом подвальчике',
-      author: 'Иван',
-      route: sampleRoute(4),
-      photos: [
-        { gradient: 'from-amber-500 to-orange-400', location: 'Антикварная лавка' },
-        { gradient: 'from-green-500 to-emerald-400', location: 'Букинистический магазин' },
-        { gradient: 'from-red-500 to-rose-400', location: 'Уютная кофейня' },
-        { gradient: 'from-indigo-500 to-purple-400', location: 'Библиотека' },
-        { gradient: 'from-teal-500 to-cyan-400', location: 'Книжный клуб' },
-      ],
-      likes: 7,
-      liked: false,
-      comments: [{id:2,author:'Мария',text:'Нашли редкую книгу :)'}],
-      description: 'Искали редкие томы в старых лавках и закончили в уютной кофейне. Удивительное путешествие по книжным местам города с находками и открытиями.',
-    },
-    {
-      id: Date.now() - 1000*60*60*24*1,
-      title: 'Фотосессия на рассвете у моря',
-      author: 'Анна',
-      route: sampleRoute(3),
-      photos: [
-        { gradient: 'from-pink-400 to-rose-300', location: 'Пляж' },
-        { gradient: 'from-orange-400 to-amber-300', location: 'Скалы' },
-        { gradient: 'from-blue-400 to-cyan-300', location: 'Маяк' },
-      ],
-      likes: 24,
-      liked: true,
-      comments: [
-        {id:3,author:'Дима',text:'Какие краски! 🌅'},
-        {id:4,author:'Лена',text:'Хочу тоже так!'}
-      ],
-      description: 'Встали в 5 утра ради этих кадров! Золотой час у моря, розовые облака и невероятные отражения в воде. Каждая минута стоила раннего подъема.',
-    }
-  ];
-}
+// function _mockPosts() {
+//   return [
+//     {
+//       id: Date.now() - 1000*60*60*24*7,
+//       title: 'Вечер у причала и джаз',
+//       author: 'Ольга',
+//       route: sampleRoute(),
+//       photos: [
+//         { gradient: 'from-blue-500 to-cyan-400', location: 'Набережная' },
+//         { gradient: 'from-orange-500 to-yellow-400', location: 'Кофейня' },
+//         { gradient: 'from-purple-500 to-pink-400', location: 'Джаз-клуб' },
+//       ],
+//       likes: 12,
+//       liked: false,
+//       comments: [{id:1,author:'Пётр',text:'Было нереально!'}],
+//       description: 'Небольшая прогулка вдоль набережной, остановка в кофейне и джаз на вечере. Отличные фото у моста и невероятная атмосфера в клубе. Рекомендую всем любителям спокойных вечеров с хорошей музыкой.',
+//     },
+//     {
+//       id: Date.now() - 1000*60*60*24*2,
+//       title: 'Книжный квест в старом подвальчике',
+//       author: 'Иван',
+//       route: sampleRoute(4),
+//       photos: [
+//         { gradient: 'from-amber-500 to-orange-400', location: 'Антикварная лавка' },
+//         { gradient: 'from-green-500 to-emerald-400', location: 'Букинистический магазин' },
+//         { gradient: 'from-red-500 to-rose-400', location: 'Уютная кофейня' },
+//         { gradient: 'from-indigo-500 to-purple-400', location: 'Библиотека' },
+//         { gradient: 'from-teal-500 to-cyan-400', location: 'Книжный клуб' },
+//       ],
+//       likes: 7,
+//       liked: false,
+//       comments: [{id:2,author:'Мария',text:'Нашли редкую книгу :)'}],
+//       description: 'Искали редкие томы в старых лавках и закончили в уютной кофейне. Удивительное путешествие по книжным местам города с находками и открытиями.',
+//     },
+//     {
+//       id: Date.now() - 1000*60*60*24*1,
+//       title: 'Фотосессия на рассвете у моря',
+//       author: 'Анна',
+//       route: sampleRoute(3),
+//       photos: [
+//         { gradient: 'from-pink-400 to-rose-300', location: 'Пляж' },
+//         { gradient: 'from-orange-400 to-amber-300', location: 'Скалы' },
+//         { gradient: 'from-blue-400 to-cyan-300', location: 'Маяк' },
+//       ],
+//       likes: 24,
+//       liked: true,
+//       comments: [
+//         {id:3,author:'Дима',text:'Какие краски! 🌅'},
+//         {id:4,author:'Лена',text:'Хочу тоже так!'}
+//       ],
+//       description: 'Встали в 5 утра ради этих кадров! Золотой час у моря, розовые облака и невероятные отражения в воде. Каждая минута стоила раннего подъема.',
+//     }
+//   ];
+// }
 
-function mockPhotos() {
-  return [
-    { gradient: 'from-blue-500 to-cyan-400', location: 'Парк' },
-    { gradient: 'from-green-500 to-emerald-400', location: 'Кафе' },
-    { gradient: 'from-purple-500 to-pink-400', location: 'Музей' },
-    { gradient: 'from-orange-500 to-yellow-400', location: 'Мост' },
-    { gradient: 'from-red-500 to-rose-400', location: 'Площадь' },
-  ];
-}
+// function _mockPhotos() {
+//   return [
+//     { gradient: 'from-blue-500 to-cyan-400', location: 'Парк' },
+//     { gradient: 'from-green-500 to-emerald-400', location: 'Кафе' },
+//     { gradient: 'from-purple-500 to-pink-400', location: 'Музей' },
+//     { gradient: 'from-orange-500 to-yellow-400', location: 'Мост' },
+//     { gradient: 'from-red-500 to-rose-400', location: 'Площадь' },
+//   ];
+// }
 
 function mockGroups() {
   return [
@@ -702,18 +699,18 @@ function mockGroups() {
   ];
 }
 
-function sampleRoute(n=3) {
-  return Array.from({length:n}).map((_,i)=>({
-    lat:55.7 + i*0.002, 
-    lng:37.6 + i*0.003, 
-    name:`Точка ${i+1}`
-  }));
-}
+// function sampleRoute(n=3) {
+//   return Array.from({length:n}).map((_,i)=>({
+//     lat:55.7 + i*0.002, 
+//     lng:37.6 + i*0.003, 
+//     name:`Точка ${i+1}`
+//   }));
+// }
 
-function formatDate(ts) {
+function formatDate(ts: number) {
   const d = new Date(ts);
   const now = new Date();
-  const diff = now - d;
+  const diff = now.getTime() - d.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   
   if (days === 0) return 'Сегодня';
