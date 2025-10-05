@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db, Post as PostModel, Photo as PhotoModel, Like as LikeModel, User
 from ..models import Post, PostCreate, Comment, CommentCreate
 from ..s3_service import s3_service
+from .auth import get_current_user
 from datetime import datetime
 
 router = APIRouter()
@@ -20,18 +21,52 @@ def list_posts(
     
     result = []
     for post in posts:
+        # Get author name
+        author_name = "Пользователь"
+        if hasattr(post, 'author') and post.author:
+            if hasattr(post.author, 'username'):
+                author_name = post.author.username
+            elif hasattr(post.author, 'full_name') and post.author.full_name:
+                author_name = post.author.full_name
+        
+        # Get comments as list
+        comments_list = []
+        if hasattr(post, 'comments') and post.comments:
+            for comment in post.comments:
+                comment_author = "Пользователь"
+                if hasattr(comment, 'author') and comment.author:
+                    if hasattr(comment.author, 'username'):
+                        comment_author = comment.author.username
+                    elif hasattr(comment.author, 'full_name') and comment.author.full_name:
+                        comment_author = comment.author.full_name
+                
+                comments_list.append({
+                    "id": comment.id,
+                    "text": comment.text,
+                    "author": comment_author
+                })
+        
+        # Get photos as list
+        photos_list = []
+        if hasattr(post, 'photos') and post.photos:
+            for photo in post.photos:
+                photos_list.append({
+                    "id": photo.id,
+                    "url": photo.url
+                })
+        
         post_dict = {
             "id": post.id,
             "title": post.title,
-            "description": post.description,
-            "author_id": post.author_id,
-            "author": post.author,
-            "likes_count": post.likes_count,
-            "liked": False,  # Will be set by frontend
-            "comments": post.comments,
-            "photos": post.photos,
-            "created_at": post.created_at,
-            "updated_at": post.updated_at
+            "description": post.description or "",
+            "author": author_name,
+            "likes": post.likes_count or 0,
+            "liked": False,
+            "comments": comments_list,
+            "photos": photos_list,
+            "route": [],  # Empty route for now
+            "created_at": post.created_at.isoformat() if post.created_at else None,
+            "updated_at": post.updated_at.isoformat() if post.updated_at else None
         }
         result.append(post_dict)
     
@@ -70,14 +105,13 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
 @router.post("/")
 def create_post(
     payload: PostCreate, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # For now, create post without authentication
-    # TODO: Add proper authentication
     post = PostModel(
         title=payload.title,
         description=payload.description,
-        author_id=1  # Default user
+        author_id=current_user.id
     )
     db.add(post)
     db.commit()
@@ -91,18 +125,30 @@ def create_post(
     db.commit()
     db.refresh(post)
     
+    # Get author name
+    author_name = current_user.username if current_user.username else "Пользователь"
+    
+    # Get photos as list
+    photos_list = []
+    if hasattr(post, 'photos') and post.photos:
+        for photo in post.photos:
+            photos_list.append({
+                "id": photo.id,
+                "url": photo.url
+            })
+    
     return {
         "id": post.id,
         "title": post.title,
-        "description": post.description,
-        "author_id": post.author_id,
-        "author": post.author,
-        "likes_count": post.likes_count,
+        "description": post.description or "",
+        "author": author_name,
+        "likes": post.likes_count or 0,
         "liked": False,
-        "comments": post.comments,
-        "photos": post.photos,
-        "created_at": post.created_at,
-        "updated_at": post.updated_at
+        "comments": [],
+        "photos": photos_list,
+        "route": [],
+        "created_at": post.created_at.isoformat() if post.created_at else None,
+        "updated_at": post.updated_at.isoformat() if post.updated_at else None
     }
 
 

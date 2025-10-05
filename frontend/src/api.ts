@@ -15,8 +15,15 @@ export type Post = {
 };
 
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('token');
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+    headers: { ...headers, ...(options?.headers || {}) },
     ...options,
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -39,6 +46,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  getCurrentUser: () => http<{ id: number; username: string; email: string; full_name?: string; posts_count: number; likes_count: number }>(`/auth/me`),
   posts: {
     list: () => http<Post[]>(`/posts/`),
     get: (id: number) => http<Post>(`/posts/${id}`),

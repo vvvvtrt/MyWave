@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "./api";
-import { Camera, MapPin, Heart, MessageCircle, Share2, Home, Users, Plus, Search, Menu, Eye, EyeOff, Sun, Moon } from "lucide-react";
+import { Camera, MapPin, Heart, MessageCircle, Share2, Home, Users, Plus, Search, Menu, Eye, EyeOff, Sun, Moon, X } from "lucide-react";
 
 export default function App() {
   const [query, setQuery] = useState("");
@@ -8,6 +8,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("feed");
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   // const [scrollY, setScrollY] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -16,9 +19,11 @@ export default function App() {
     (async () => {
       try {
         const data = await api.posts.list();
+        console.log('Posts data:', data);
         setPosts(data as any);
       } catch (e) {
-        console.error(e);
+        console.error('Error loading posts:', e);
+        setPosts([]);
       } finally {
         setLoading(false);
       }
@@ -51,11 +56,14 @@ export default function App() {
   }
 
   async function handleCreateAdventure() {
-    const title = prompt('Название приключения');
-    if (!title) return;
+    setShowCreatePost(true);
+  }
+
+  async function handleCreatePost(postData: any) {
     try {
-      const created = await api.posts.create({ title, description: 'Новое приключение, созданное вами.' });
+      const created = await api.posts.create(postData);
       setPosts(prev => [created as any, ...prev]);
+      setShowCreatePost(false);
       setActiveTab('my');
     } catch (e) {
       console.error(e);
@@ -64,6 +72,7 @@ export default function App() {
 
   async function handleAuth(credentials: any) {
     try {
+      let response;
       if (credentials.mode === 'register') {
         // Преобразуем данные для регистрации
         const registerData = {
@@ -72,17 +81,23 @@ export default function App() {
           password: credentials.password,
           full_name: credentials.name
         };
-        await api.register(registerData);
+        response = await api.register(registerData);
       } else {
         // Для входа используем email как username
         const loginData = {
           email: credentials.email,
           password: credentials.password
         };
-        await api.login(loginData);
+        response = await api.login(loginData);
       }
+      
+      // Сохраняем токен
+      localStorage.setItem('token', response.access_token);
+      
+      // Получаем информацию о пользователе
+      const userInfo = await api.getCurrentUser();
+      setCurrentUser(userInfo);
       setIsAuthenticated(true);
-      // setShowAuth(false);
     } catch (e) {
       console.error(e);
     }
@@ -151,10 +166,15 @@ export default function App() {
                 >
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
-                <div className="hidden sm:flex items-center gap-2 rounded-full px-4 py-2 bg-white border border-gray-200 text-slate-700 dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-bold text-white text-sm">А</div>
-                  <span className="text-slate-700 text-sm dark:text-white">Александр</span>
-                </div>
+                <button 
+                  onClick={() => setShowProfile(true)}
+                  className="hidden sm:flex items-center gap-2 rounded-full px-4 py-2 bg-white border border-gray-200 text-slate-700 hover:bg-white/90 transition-colors dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-bold text-white text-sm">
+                    {currentUser?.username?.[0] || 'U'}
+                  </div>
+                  <span className="text-slate-700 text-sm dark:text-white">{currentUser?.username || 'Пользователь'}</span>
+                </button>
                 <button 
                   onClick={() => setIsAuthenticated(false)}
                   className="px-4 py-2 rounded-full bg-white border border-gray-200 text-slate-700 hover:bg-gray-100 transition-colors dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
@@ -302,6 +322,22 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Create Post Modal */}
+      {showCreatePost && (
+        <CreatePostModal 
+          onClose={() => setShowCreatePost(false)} 
+          onSubmit={handleCreatePost}
+        />
+      )}
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <ProfileModal 
+          user={currentUser}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
     </div>
   );
@@ -733,4 +769,207 @@ function formatDate(ts: number) {
   if (days === 1) return 'Вчера';
   if (days < 7) return `${days} дня назад`;
   return d.toLocaleDateString('ru-RU');
+}
+
+function CreatePostModal({ onClose, onSubmit }: { onClose: () => void, onSubmit: (data: any) => void }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    photos: [] as string[]
+  });
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${(import.meta as any).env?.VITE_API_URL || "http://localhost:8000"}/posts/upload-photo`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setFormData(prev => ({
+            ...prev,
+            photos: [...prev.photos, result.url]
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="relative bg-white/25 border border-gray-200/25 rounded-2xl p-6 w-full max-w-md backdrop-blur-sm dark:bg-black/25 dark:border-black/25">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">Создать приключение</h3>
+          <button 
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-white/25 transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-700 dark:text-white" />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <input
+              type="text"
+              placeholder="Название приключения"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
+              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+              required
+            />
+          </div>
+          
+          <div>
+            <textarea
+              placeholder="Описание приключения"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white resize-none"
+              rows={4}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
+              Фотографии
+            </label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+              disabled={uploading}
+            />
+            {uploading && (
+              <p className="text-sm text-slate-600 dark:text-white/70 mt-2">Загружаем фото...</p>
+            )}
+            {formData.photos.length > 0 && (
+              <div className="mt-2">
+                <p className="text-sm text-slate-600 dark:text-white/70 mb-2">
+                  Загружено фото: {formData.photos.length}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {formData.photos.map((photo, index) => (
+                    <div key={index} className="relative">
+                      <img 
+                        src={photo} 
+                        alt={`Photo ${index + 1}`}
+                        className="w-full h-20 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          photos: prev.photos.filter((_, i) => i !== index)
+                        }))}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 transition-colors backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-3 rounded-xl bg-orange-500 border border-orange-600 hover:bg-orange-600 text-white font-semibold transition-colors"
+            >
+              Создать
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ProfileModal({ user, onClose }: { user: any, onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="relative bg-white/25 border border-gray-200/25 rounded-2xl p-6 w-full max-w-md backdrop-blur-sm dark:bg-black/25 dark:border-black/25">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">Мой профиль</h3>
+          <button 
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-white/25 transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-700 dark:text-white" />
+          </button>
+        </div>
+        
+        <div className="text-center">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-bold text-white text-2xl mx-auto mb-4">
+            {user?.username?.[0] || 'U'}
+          </div>
+          <h4 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            {user?.username || 'Пользователь'}
+          </h4>
+          <p className="text-slate-600 dark:text-white/70 mb-4">
+            {user?.email || 'email@example.com'}
+          </p>
+          
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="bg-white/25 border border-gray-200/25 rounded-xl p-4 backdrop-blur-sm dark:bg-black/25 dark:border-black/25">
+              <div className="text-2xl font-bold text-orange-500 dark:text-orange-300">
+                {user?.posts_count || 0}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-white/70">
+                Приключений
+              </div>
+            </div>
+            <div className="bg-white/25 border border-gray-200/25 rounded-xl p-4 backdrop-blur-sm dark:bg-black/25 dark:border-black/25">
+              <div className="text-2xl font-bold text-orange-500 dark:text-orange-300">
+                {user?.likes_count || 0}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-white/70">
+                Лайков получено
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white/25 border border-gray-200/25 rounded-xl p-4 backdrop-blur-sm dark:bg-black/25 dark:border-black/25">
+            <h5 className="font-semibold text-slate-900 dark:text-white mb-2">О себе</h5>
+            <p className="text-sm text-slate-600 dark:text-white/70">
+              Люблю путешествовать и открывать новые места. 
+              Создаю воспоминания через приключения и делюсь ими с миром.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
