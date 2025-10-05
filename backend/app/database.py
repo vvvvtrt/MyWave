@@ -79,7 +79,46 @@ class Like(Base):
     post_id = Column(Integer, ForeignKey("posts.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
 
-# Create tables
+class Chat(Base):
+    __tablename__ = "chats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    members = relationship("ChatMember", back_populates="chat", cascade="all, delete-orphan")
+    messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")
+
+
+class ChatMember(Base):
+    __tablename__ = "chat_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, ForeignKey("chats.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    joined_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    chat = relationship("Chat", back_populates="members")
+    user = relationship("User")
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, ForeignKey("chats.id"))
+    author_id = Column(Integer, ForeignKey("users.id"))
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    chat = relationship("Chat", back_populates="messages")
+    author = relationship("User")
+
+
+# Create tables (ensure models are defined above this line)
 Base.metadata.create_all(bind=engine)
 
 def get_db():

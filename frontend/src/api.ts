@@ -62,6 +62,11 @@ export const api = {
   groups: {
     list: () => http<Array<{ id: number; name: string; members: any[] }>>(`/groups/`),
   },
+  chats: {
+    list: () => http<Array<{ id: number; name: string; last_message?: { text: string; created_at?: string } }>>(`/chats/`),
+    messages: (chatId: number) => http<Array<{ id: number; text: string; author: string; created_at?: string }>>(`/chats/${chatId}/messages`),
+    send: (chatId: number, text: string) => http<{ id: number; text: string; author: string; created_at?: string }>(`/chats/${chatId}/messages`, { method: 'POST', body: JSON.stringify({ text }) }),
+  },
   search: (q: string) => http<Post[]>(`/search/?q=${encodeURIComponent(q)}`),
 };
 

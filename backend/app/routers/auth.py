@@ -5,6 +5,7 @@ from datetime import timedelta
 from ..database import get_db
 from ..models import User, UserCreate, UserLogin, Token, UserProfile
 from ..auth_service import authenticate_user, create_user, create_access_token, verify_token, get_user_by_email
+from ..database import Chat, ChatMember, Message
 from ..config import settings
 
 router = APIRouter()
@@ -57,6 +58,20 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         data={"sub": user.email}, expires_delta=access_token_expires
     )
     
+    # Ensure a welcome chat exists with this user
+    welcome_name = "Моя Волна"
+    chat = Chat(name=welcome_name)
+    db.add(chat)
+    db.commit()
+    db.refresh(chat)
+    # Add user as member
+    member = ChatMember(chat_id=chat.id, user_id=user.id)
+    db.add(member)
+    # Welcome message
+    msg = Message(chat_id=chat.id, author_id=None, text="Добро пожаловать в Мою Волну! Здесь вы можете общаться и делиться идеями.")
+    db.add(msg)
+    db.commit()
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 

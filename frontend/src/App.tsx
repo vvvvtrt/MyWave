@@ -4,6 +4,10 @@ import { Camera, MapPin, Heart, MessageCircle, Share2, Home, Users, Plus, Search
 
 export default function App() {
   const [query, setQuery] = useState("");
+  // Feed LLM chat (mock)
+  const [showLLMChat, setShowLLMChat] = useState(false);
+  const [llmMessages, setLlmMessages] = useState<any[]>([]);
+  const [llmInput, setLlmInput] = useState("");
   const [posts, setPosts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("feed");
   const [loading, setLoading] = useState(true);
@@ -14,6 +18,11 @@ export default function App() {
   // const [scrollY, setScrollY] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [chats, setChats] = useState<any[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatsLoading, setChatsLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -25,10 +34,91 @@ export default function App() {
         console.error('Error loading posts:', e);
         setPosts([]);
       } finally {
-        setLoading(false);
-      }
+      setLoading(false);
+    }
     })();
   }, []);
+
+  async function handleFeedSearch() {
+    try {
+      const res = await api.search(query);
+      setPosts(res as any);
+    } catch (e) {
+      console.error('Error searching:', e);
+      setPosts([]);
+    } finally {
+      // Show mock LLM chat below the search
+      setShowLLMChat(true);
+      setLlmMessages([
+        { id: Date.now(), author: 'Моя Волна', text: 'Привет! Я помогу подобрать приключение. Спроси, что хочешь испытать.', created_at: new Date().toISOString() },
+      ]);
+    }
+  }
+
+  function handleLLMSend() {
+    const text = llmInput.trim();
+    if (!text) return;
+    const userMsg = { id: Date.now(), author: currentUser?.username || 'Вы', text, created_at: new Date().toISOString() };
+    setLlmMessages(prev => [...prev, userMsg]);
+    setLlmInput("");
+    // Mock LLM reply
+    const reply = { id: Date.now()+1, author: 'Моя Волна', text: 'Это ответ-заглушка от LLM 🙂 Скоро здесь будет умный помощник.', created_at: new Date().toISOString() };
+    setTimeout(() => setLlmMessages(prev => [...prev, reply]), 300);
+  }
+
+  // Load chats when switching to groups
+  useEffect(() => {
+    (async () => {
+      if (activeTab !== 'groups') return;
+      setChatsLoading(true);
+      try {
+        const list = await api.chats.list();
+        setChats(list as any);
+        if (list && (list as any).length > 0) {
+          const firstId = (list as any)[0].id;
+          setSelectedChatId(firstId);
+          const msgs = await api.chats.messages(firstId);
+          setChatMessages(msgs as any);
+      } else {
+          setSelectedChatId(null);
+          setChatMessages([]);
+      }
+    } catch (e) {
+        console.error('Error loading chats:', e);
+        setChats([]);
+        setSelectedChatId(null);
+        setChatMessages([]);
+    } finally {
+        setChatsLoading(false);
+      }
+    })();
+  }, [activeTab]);
+
+  async function handleSelectChat(chatId: number) {
+    try {
+      setSelectedChatId(chatId);
+      const msgs = await api.chats.messages(chatId);
+      setChatMessages(msgs as any);
+    } catch (e) {
+      console.error('Error loading messages:', e);
+      setChatMessages([]);
+    }
+  }
+
+  async function handleSendMessage() {
+    const text = chatInput.trim();
+    if (!text || !selectedChatId) return;
+    try {
+      const msg = await api.chats.send(selectedChatId, text);
+      setChatMessages((prev: any[]) => [...prev, msg as any]);
+      setChatInput("");
+    } catch (e) {
+      console.error('Error sending message:', e);
+      // local fallback
+      setChatMessages((prev: any[]) => [...prev, { id: Date.now(), text, author: currentUser?.username || 'Вы', created_at: new Date().toISOString() }]);
+      setChatInput("");
+    }
+  }
 
   // useEffect(() => {
   //   const handleScroll = () => setScrollY(window.scrollY);
@@ -283,7 +373,10 @@ export default function App() {
           {/* Main content */}
           <main className="flex-1 p-4 md:p-8 pb-20">
             <div className="space-y-6">
-              {/* Search Block */}
+
+              {(activeTab==='feed' || activeTab==='my') && (
+                <>
+                  {activeTab==='feed' && (
                 <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 rounded-2xl p-6 shadow-lg text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
                 <div className="text-center mb-6">
                   <h2 className="text-3xl font-bold text-slate-900 mb-2 dark:text-white">Чего хочется испытать сегодня?</h2>
@@ -296,39 +389,61 @@ export default function App() {
                     placeholder="Кофе, прогулка у реки, старая книжная..." 
                     className="flex-1 rounded-2xl px-6 py-4 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none text-lg backdrop-blur-sm dark:backdrop-blur-md dark:bg-slate-900 dark:border-slate-700 dark:text-white" 
                   />
-                         <button 
-                           onClick={async () => {
-                             try {
-                               const res = await api.search(query);
-                               setPosts(res as any);
-                             } catch (e) {
-                               console.error('Error searching:', e);
-                               // Fallback: show empty results
-                               setPosts([]);
-                             }
-                           }} 
-                           className="bg-orange-500 border border-orange-600 px-8 py-4 rounded-2xl font-semibold text-white shadow-lg hover:bg-orange-600 transition-colors"
-                         >
+                  <button 
+                          onClick={handleFeedSearch}
+                    className="bg-orange-500 border border-orange-600 px-8 py-4 rounded-2xl font-semibold text-white shadow-lg hover:bg-orange-600 transition-colors"
+                  >
                     <Search className="w-5 h-5" />
                   </button>
                 </div>
                 
-                {/* Suggestion Buttons */}
                 <div className="flex flex-wrap gap-2">
                   {['Популярные', 'Природа', 'Искусство', 'Еда', 'Спорт', 'Музыка', 'Книги', 'Путешествия'].map(suggestion => (
                     <button
                       key={suggestion}
-                      onClick={() => setQuery(suggestion)}
+                            onClick={() => setQuery(suggestion)}
                       className="px-4 py-2 rounded-full bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 hover:border-gray-200/35 transition-colors text-sm backdrop-blur-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
                     >
                       {suggestion}
                     </button>
                   ))}
-                </div>
               </div>
 
-              {(activeTab==='feed' || activeTab==='my') && (
-                <>
+                      {showLLMChat && (
+                        <div className="mt-6 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 flex flex-col overflow-hidden">
+                          <div className="p-3 border-b border-gray-200/25 dark:border-black/25 text-sm">Помощник • Моя Волна</div>
+                          <div className="flex-1 p-3 space-y-3 max-h-[60vh] md:max-h-[65vh] overflow-y-auto">
+                            {llmMessages.map((m:any)=> (
+                              <div key={m.id} className="flex items-start gap-2">
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                                  {m.author?.[0] || 'U'}
+                                </div>
+                                <div className="flex-1 bg-white/25 border border-gray-200/25 rounded-xl px-3 py-2 text-slate-900 backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
+                                  <div className="font-semibold text-slate-900 text-xs mb-1 dark:text-white">{m.author || 'Пользователь'}</div>
+                                  <div className="text-slate-800 text-sm dark:text-white/90">{m.text}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="p-3 border-t border-gray-200/25 dark:border-black/25 flex gap-2">
+                            <input
+                              value={llmInput}
+                              onChange={(e)=>setLlmInput(e.target.value)}
+                              onKeyDown={(e)=>{ if((e as any).key==='Enter'){ (e as any).preventDefault(); handleLLMSend(); }}}
+                              placeholder="Спросите помощника..."
+                              className="flex-1 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors text-sm backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                            />
+                            <button
+                              onClick={handleLLMSend}
+                              className="px-4 py-2 rounded-xl bg-orange-500 border border-orange-600 text-white font-semibold hover:bg-orange-600 transition-colors"
+                            >
+                              Отправить
+                            </button>
+                          </div>
+                    </div>
+                  )}
+                    </div>
+                  )}
                   {posts.filter((p: any) => activeTab==='my' ? p.author === 'Вы' : true).map((post: any) => (
                     <AdventureCard key={post.id} post={post} onLike={handleLike} onComment={handleAddComment} />
                   ))}
@@ -336,15 +451,76 @@ export default function App() {
               )}
 
               {activeTab === 'groups' && (
-                <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-8 rounded-3xl text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
-                  <h3 className="text-2xl font-semibold text-slate-900 mb-6 dark:text-white">Ваши группы</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {mockGroups().map((g: any) => (
-                      <div key={g.id} className="p-6 rounded-2xl bg-white/25 border border-gray-200/25 text-slate-900 backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
-                        <div className="font-semibold text-slate-900 text-lg dark:text-white">{g.name}</div>
-                        <div className="text-sm text-slate-600 mt-1 dark:text-white/60">{g.members.length} участников</div>
+                <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-4 md:p-6 rounded-3xl text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
+                  <h3 className="text-2xl font-semibold text-slate-900 mb-4 dark:text-white">Чаты</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Chats list */}
+                    <div className="md:col-span-1 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 overflow-hidden">
+                      <div className="p-3 border-b border-gray-200/25 dark:border-black/25 text-sm">Мои чаты</div>
+                      <div className="max-h-[60vh] overflow-y-auto">
+                        {chatsLoading && (
+                          <div className="p-4 text-sm text-slate-600 dark:text-white/70">Загрузка...</div>
+                        )}
+                        {!chatsLoading && chats.length === 0 && (
+                          <div className="p-4 text-sm text-slate-600 dark:text-white/70">Пока нет чатов</div>
+                        )}
+                        {chats.map((c: any) => (
+                          <button
+                            key={c.id}
+                            onClick={() => handleSelectChat(c.id)}
+                            className={`w-full text-left p-3 flex items-start gap-3 hover:bg-white/10 dark:hover:bg-black/25 transition-colors ${selectedChatId===c.id ? 'bg-white/10 dark:bg-black/30' : ''}`}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-bold text-white text-sm">
+                              {c.name?.[0] || 'Ч'}
                       </div>
+                            <div className="flex-1">
+                              <div className="font-semibold text-sm">{c.name}</div>
+                              {c.last_message && (
+                                <div className="text-xs text-slate-600 dark:text-white/70 truncate">{c.last_message.text}</div>
+                              )}
+                            </div>
+                          </button>
                     ))}
+                  </div>
+                </div>
+
+                    {/* Messages pane */}
+                    <div className="md:col-span-2 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 flex flex-col overflow-hidden">
+                      <div className="p-3 border-b border-gray-200/25 dark:border-black/25 text-sm">
+                        {chats.find((c:any)=>c.id===selectedChatId)?.name || 'Выберите чат'}
+                      </div>
+                      <div className="flex-1 p-3 space-y-3 max-h-[70vh] overflow-y-auto">
+                        {selectedChatId && chatMessages.map((m:any)=> (
+                          <div key={m.id} className="flex items-start gap-2">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                              {m.author?.[0] || 'U'}
+                            </div>
+                            <div className="flex-1 bg-white/25 border border-gray-200/25 rounded-xl px-3 py-2 text-slate-900 backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white">
+                              <div className="font-semibold text-slate-900 text-xs mb-1 dark:text-white">{m.author || 'Пользователь'}</div>
+                              <div className="text-slate-800 text-sm dark:text-white/90">{m.text}</div>
+                            </div>
+                          </div>
+                        ))}
+                        {!selectedChatId && (
+                          <div className="text-sm text-slate-600 dark:text-white/70">Выберите чат слева</div>
+                        )}
+                      </div>
+                      <div className="p-3 border-t border-gray-200/25 dark:border-black/25 flex gap-2">
+                        <input
+                          value={chatInput}
+                          onChange={(e)=>setChatInput(e.target.value)}
+                          onKeyDown={(e)=>{ if((e as any).key==='Enter'){ (e as any).preventDefault(); handleSendMessage(); }}}
+                          placeholder="Написать сообщение"
+                          className="flex-1 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-.orange-400 transition-colors text-sm backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                        />
+                        <button
+                          onClick={handleSendMessage}
+                          className="px-4 py-2 rounded-xl bg-orange-500 border border-orange-600 text-white font-semibold hover:bg-orange-600 transition-colors"
+                        >
+                          Отправить
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -538,8 +714,8 @@ function AdventureCard({ post, onLike, onComment }: { post: any, onLike: (id: an
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
-                    <Camera className="w-8 h-8 text-white/80" />
-                  </div>
+                      <Camera className="w-8 h-8 text-white/80" />
+                    </div>
                 )}
                 {index === 3 && !showAllPhotos && post.photos.length > 4 && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -794,14 +970,7 @@ function SeaLoading() {
 //   ];
 // }
 
-function mockGroups() {
-  return [
-    {id:1, name:'Фотосъемки по выходным', members:['Аня','Дима','Ты']},
-    {id:2, name:'Книжные субботы', members:['Лена','Иван']},
-    {id:3, name:'Кофейные маршруты', members:['Ольга','Петр','Мария']},
-    {id:4, name:'Рассветы и закаты', members:['Анна','Максим']},
-  ];
-}
+// mockGroups removed: replaced by live chats UI in 'groups' tab
 
 // function sampleRoute(n=3) {
 //   return Array.from({length:n}).map((_,i)=>({
@@ -881,31 +1050,31 @@ function CreatePostModal({ onClose, onSubmit }: { onClose: () => void, onSubmit:
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input
-              type="text"
+        <div>
+          <input
+            type="text"
               placeholder="Название приключения"
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
-              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-              required
-            />
-          </div>
-          
-          <div>
-            <textarea
+            className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+            required
+          />
+        </div>
+
+        <div>
+          <textarea
               placeholder="Описание приключения"
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white resize-none"
+            className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white resize-none"
               rows={4}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
-              Фотографии
-            </label>
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
+            Фотографии
+          </label>
             <input
               type="file"
               multiple
@@ -922,47 +1091,47 @@ function CreatePostModal({ onClose, onSubmit }: { onClose: () => void, onSubmit:
                 <p className="text-sm text-slate-600 dark:text-white/70 mb-2">
                   Загружено фото: {formData.photos.length}
                 </p>
-                <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                   {formData.photos.map((photo, index) => (
                     <div key={index} className="relative">
                       <img 
                         src={photo} 
                         alt={`Photo ${index + 1}`}
                         className="w-full h-20 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
+                    />
+                    <button
+                      type="button"
                         onClick={() => setFormData(prev => ({
                           ...prev,
                           photos: prev.photos.filter((_, i) => i !== index)
                         }))}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
                 </div>
               </div>
             )}
-          </div>
-          
+        </div>
+
           <div className="flex gap-3">
-            <button
+          <button
               type="button"
               onClick={onClose}
               className="flex-1 px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 transition-colors backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
             >
               Отмена
-            </button>
-            <button
+          </button>
+          <button
               type="submit"
               className="flex-1 px-4 py-3 rounded-xl bg-orange-500 border border-orange-600 hover:bg-orange-600 text-white font-semibold transition-colors"
             >
               Создать
-            </button>
-          </div>
-        </form>
+          </button>
+        </div>
+      </form>
       </div>
     </div>
   );
