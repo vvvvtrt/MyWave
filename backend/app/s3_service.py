@@ -44,10 +44,12 @@ class S3Service:
                     Body=file_content,
                     ContentType=file.content_type
                 )
-                # Return MinIO URL
+                # Return MinIO URL (use external URL for frontend access)
                 endpoint_url = getattr(settings, 'S3_ENDPOINT_URL', None)
                 if endpoint_url:
-                    return f"{endpoint_url}/{settings.S3_BUCKET}/{unique_filename}"
+                    # Replace internal Docker URL with external URL
+                    external_url = endpoint_url.replace('http://minio:9000', 'http://localhost:9000')
+                    return f"{external_url}/{settings.S3_BUCKET}/{unique_filename}"
                 else:
                     return f"https://{settings.S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/{unique_filename}"
             except Exception as e:
