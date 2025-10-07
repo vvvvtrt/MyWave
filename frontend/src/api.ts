@@ -60,7 +60,9 @@ export const api = {
       http<Comment>(`/comments/`, { method: "POST", body: JSON.stringify(payload) }),
   },
   groups: {
-    list: () => http<Array<{ id: number; name: string; members: any[] }>>(`/groups/`),
+    list: () => http<Array<{ id: number; name: string }>>(`/groups/`),
+    create: (name: string) => http<{ id: number; name: string }>(`/groups/`, { method: 'POST', body: JSON.stringify({ name }) }),
+    addMember: (groupId: number, userId: number) => http<{ status: string }>(`/groups/${groupId}/add-member`, { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
   },
   places: {
     list: () => http<Array<{ id: number; name: string; image: string; description: string }>>(`/places/`),

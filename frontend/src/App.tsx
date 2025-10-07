@@ -89,20 +89,20 @@ export default function App() {
         const list = await api.chats.list();
         setChats(list as any);
         if (list && (list as any).length > 0) {
-          const firstId = (list as any)[0].id;
-          setSelectedChatId(firstId);
-          const msgs = await api.chats.messages(firstId);
+          const currentId = selectedChatId ?? (list as any)[0].id;
+          setSelectedChatId(currentId);
+          const msgs = await api.chats.messages(currentId);
           setChatMessages(msgs as any);
-      } else {
+        } else {
           setSelectedChatId(null);
           setChatMessages([]);
-      }
-    } catch (e) {
+        }
+      } catch (e) {
         console.error('Error loading chats:', e);
         setChats([]);
         setSelectedChatId(null);
         setChatMessages([]);
-    } finally {
+      } finally {
         setChatsLoading(false);
       }
     })();
@@ -231,6 +231,10 @@ export default function App() {
       const created = await api.chats.create(place?.name || 'Путешествие');
       setActiveTab('groups');
       setSelectedChatId(created.id);
+      try {
+        const msgs = await api.chats.messages(created.id);
+        setChatMessages(msgs as any);
+      } catch {}
     } catch (e) {
       console.error('Error creating chat:', e);
       setActiveTab('groups');
@@ -330,7 +334,7 @@ export default function App() {
                   <input
                     type="text"
                     placeholder="@никнейм"
-                    onKeyDown={async (e)=>{ const t=(e.target as HTMLInputElement); if((e as any).key==='Enter' && t.value.trim()){ try{ const dm=await api.chats.createDM(t.value.trim().replace(/^@/,'')); setActiveTab('groups'); setSelectedChatId(dm.id); t.value=''; }catch(err){ console.error('DM error', err);} } }}
+                    onKeyDown={async (e)=>{ const t=(e.target as HTMLInputElement); if((e as any).key==='Enter' && t.value.trim()){ try{ const uname=t.value.trim().replace(/^@/, ''); const dm=await api.chats.createDM(uname); setActiveTab('groups'); setSelectedChatId(dm.id); try{ const msgs=await api.chats.messages(dm.id); setChatMessages(msgs as any);}catch{} t.value=''; }catch(err){ console.error('DM error', err);} } }}
                     className="rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none text-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                   />
                 </div>
@@ -526,6 +530,42 @@ export default function App() {
               {activeTab === 'groups' && (
                 <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-4 md:p-6 rounded-3xl text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
                   <h3 className="text-2xl font-semibold text-slate-900 mb-4 dark:text-white">Чаты</h3>
+                  <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="flex gap-2">
+                      <input
+                        id="create-group-input"
+                        type="text"
+                        placeholder="Название группы"
+                        className="flex-1 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none text-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                      />
+                      <button
+                        onClick={async()=>{ const el=document.getElementById('create-group-input') as HTMLInputElement|null; const name=el?.value?.trim(); if(!name) return; try{ const g=await api.groups.create(name); const list=await api.chats.list(); setChats(list as any); setActiveTab('groups'); setSelectedChatId(g.id); const msgs=await api.chats.messages(g.id); setChatMessages(msgs as any); if(el) el.value=''; }catch(e){ console.error('Create group error', e);} }}
+                        className="px-4 py-2 rounded-xl bg-orange-500 border border-orange-600 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+                      >
+                        Создать группу
+                      </button>
+                    </div>
+                    <div className="flex gap-2 md:col-span-2">
+                      <input
+                        id="add-user-id-input"
+                        type="number"
+                        placeholder="ID пользователя"
+                        className="w-40 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none text-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                      />
+                      <input
+                        id="group-id-input"
+                        type="number"
+                        placeholder="ID группы"
+                        className="w-40 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none text-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                      />
+                      <button
+                        onClick={async()=>{ const userEl=document.getElementById('add-user-id-input') as HTMLInputElement|null; const groupEl=document.getElementById('group-id-input') as HTMLInputElement|null; const userId=Number(userEl?.value||''); const groupId=Number(groupEl?.value||''); if(!userId || !groupId) return; try{ await api.groups.addMember(groupId, userId); if(groupEl) groupEl.value=''; if(userEl) userEl.value=''; }catch(e){ console.error('Add member error', e);} }}
+                        className="px-4 py-2 rounded-xl bg-white/25 border border-gray-200/25 text-slate-700 text-sm hover:bg-white/35 transition-colors dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
+                      >
+                        Добавить участника
+                      </button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-stretch md:h-[calc(100vh-88px-48px-48px-56px)]">
                     {/* Chats list */}
                     <div className="md:col-span-2 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 overflow-hidden">
