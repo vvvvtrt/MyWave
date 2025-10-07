@@ -453,9 +453,9 @@ export default function App() {
               {activeTab === 'groups' && (
                 <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-4 md:p-6 rounded-3xl text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
                   <h3 className="text-2xl font-semibold text-slate-900 mb-4 dark:text-white">Чаты</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-stretch md:h-[calc(100vh-88px-48px-48px-32px)]">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-stretch md:h-[calc(100vh-88px-48px-48px-56px)]">
                     {/* Chats list */}
-                    <div className="md:col-span-1 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 overflow-hidden">
+                    <div className="md:col-span-2 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 overflow-hidden">
                       <div className="p-3 border-b border-gray-200/25 dark:border-black/25 text-sm">Мои чаты</div>
                       <div className="h-full overflow-y-auto">
                         {chatsLoading && (
@@ -485,7 +485,7 @@ export default function App() {
                 </div>
 
                     {/* Messages pane */}
-                    <div className="md:col-span-4 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 flex flex-col overflow-hidden h-full">
+                    <div className="md:col-span-3 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 flex flex-col overflow-hidden h-full">
                       <div className="p-3 border-b border-gray-200/25 dark:border-black/25 text-sm">
                         {chats.find((c:any)=>c.id===selectedChatId)?.name || 'Выберите чат'}
                       </div>
