@@ -282,16 +282,16 @@ export default function App() {
       <div className="relative z-10">
         {/* Header */}
         <header className="sticky top-0 z-40 p-4 md:p-8">
-          <div className="max-w-2xl mx-auto backdrop-blur-md bg-white/25 border border-gray-200/25 rounded-2xl p-4 shadow-lg text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
+          <div className="w-full max-w-[120rem] mx-auto backdrop-blur-md bg-white/25 border border-gray-200/25 rounded-2xl p-4 shadow-lg text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 w-full">
                 <button 
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                   className="md:hidden p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-100 transition-colors dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35"
                 >
                   <Menu className="w-5 h-5 text-white" />
                 </button>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Моя волна</h1>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex-1">Моя волна</h1>
               </div>
               
               <div className="flex items-center gap-4">
@@ -323,9 +323,9 @@ export default function App() {
         </header>
 
 
-        <div className="flex max-w-7xl mx-auto">
+        <div className="flex max-w-[120rem] mx-auto">
           {/* Sidebar */}
-          <aside className={`${sidebarCollapsed ? 'w-16' : 'w-72'} hidden md:block sticky top-0 h-screen p-6 transition-all duration-300`}>
+          <aside className={`${sidebarCollapsed ? 'w-16' : 'w-72'} hidden md:block sticky top-[88px] h-[calc(100vh-88px)] p-6 transition-all duration-300`}>
             <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 rounded-2xl p-4 shadow-lg text-slate-900 h-full dark:bg-black/25 dark:border-black/25 dark:text-white">
               {!sidebarCollapsed ? (
                 <>
@@ -371,7 +371,7 @@ export default function App() {
           </aside>
 
           {/* Main content */}
-          <main className="flex-1 p-4 md:p-8 pb-20">
+          <main className="flex-1 p-4 md:p-6 pb-20">
             <div className="space-y-6">
 
               {(activeTab==='feed' || activeTab==='my') && (
@@ -453,11 +453,11 @@ export default function App() {
               {activeTab === 'groups' && (
                 <div className="backdrop-blur-md bg-white/25 border border-gray-200/25 p-4 md:p-6 rounded-3xl text-slate-900 dark:bg-black/25 dark:border-black/25 dark:text-white">
                   <h3 className="text-2xl font-semibold text-slate-900 mb-4 dark:text-white">Чаты</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-stretch md:h-[calc(100vh-88px-48px-48px-32px)]">
                     {/* Chats list */}
                     <div className="md:col-span-1 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 overflow-hidden">
                       <div className="p-3 border-b border-gray-200/25 dark:border-black/25 text-sm">Мои чаты</div>
-                      <div className="max-h-[60vh] overflow-y-auto">
+                      <div className="h-full overflow-y-auto">
                         {chatsLoading && (
                           <div className="p-4 text-sm text-slate-600 dark:text-white/70">Загрузка...</div>
                         )}
@@ -485,11 +485,11 @@ export default function App() {
                 </div>
 
                     {/* Messages pane */}
-                    <div className="md:col-span-2 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 flex flex-col overflow-hidden">
+                    <div className="md:col-span-4 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 flex flex-col overflow-hidden h-full">
                       <div className="p-3 border-b border-gray-200/25 dark:border-black/25 text-sm">
                         {chats.find((c:any)=>c.id===selectedChatId)?.name || 'Выберите чат'}
                       </div>
-                      <div className="flex-1 p-3 space-y-3 max-h-[70vh] overflow-y-auto">
+                      <div className="flex-1 p-3 space-y-3 overflow-y-auto">
                         {selectedChatId && chatMessages.map((m:any)=> (
                           <div key={m.id} className="flex items-start gap-2">
                             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
@@ -505,13 +505,13 @@ export default function App() {
                           <div className="text-sm text-slate-600 dark:text-white/70">Выберите чат слева</div>
                         )}
                       </div>
-                      <div className="p-3 border-t border-gray-200/25 dark:border-black/25 flex gap-2">
+                      <div className="p-3 border-t border-gray-200/25 dark:border-black/25 flex gap-2 sticky bottom-0 bg-white/10 dark:bg-black/20 backdrop-blur-md">
                         <input
                           value={chatInput}
                           onChange={(e)=>setChatInput(e.target.value)}
                           onKeyDown={(e)=>{ if((e as any).key==='Enter'){ (e as any).preventDefault(); handleSendMessage(); }}}
                           placeholder="Написать сообщение"
-                          className="flex-1 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-.orange-400 transition-colors text-sm backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                          className="flex-1 rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors text-sm backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                         />
                         <button
                           onClick={handleSendMessage}
