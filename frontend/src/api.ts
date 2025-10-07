@@ -50,7 +50,7 @@ export const api = {
   posts: {
     list: () => http<Post[]>(`/posts/`),
     get: (id: number) => http<Post>(`/posts/${id}`),
-    create: (payload: { title: string; description?: string }) =>
+    create: (payload: { title: string; description?: string; photos?: string[] }) =>
       http<Post>(`/posts/`, { method: "POST", body: JSON.stringify(payload) }),
     like: (id: number) => http<Post>(`/posts/${id}/like`, { method: "POST" }),
   },
@@ -62,10 +62,15 @@ export const api = {
   groups: {
     list: () => http<Array<{ id: number; name: string; members: any[] }>>(`/groups/`),
   },
+  places: {
+    list: () => http<Array<{ id: number; name: string; image: string; description: string }>>(`/places/`),
+  },
   chats: {
     list: () => http<Array<{ id: number; name: string; last_message?: { text: string; created_at?: string } }>>(`/chats/`),
     messages: (chatId: number) => http<Array<{ id: number; text: string; author: string; created_at?: string }>>(`/chats/${chatId}/messages`),
     send: (chatId: number, text: string) => http<{ id: number; text: string; author: string; created_at?: string }>(`/chats/${chatId}/messages`, { method: 'POST', body: JSON.stringify({ text }) }),
+    create: (name: string) => http<{ id: number; name: string }>(`/chats/`, { method: 'POST', body: JSON.stringify({ name }) }),
+    createDM: (username: string) => http<{ id: number; name: string }>(`/chats/dm`, { method: 'POST', body: JSON.stringify({ username }) }),
   },
   search: (q: string) => http<Post[]>(`/search/?q=${encodeURIComponent(q)}`),
 };

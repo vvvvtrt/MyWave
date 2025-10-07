@@ -72,3 +72,35 @@ def send_message(chat_id: int, payload: dict, db: Session = Depends(get_db), cur
         "created_at": msg.created_at.isoformat() if msg.created_at else None
     }
 
+
+@router.post("/")
+def create_chat(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    name = (payload or {}).get("name") or "Путешествие"
+    chat = Chat(name=name)
+    db.add(chat)
+    db.commit()
+    db.refresh(chat)
+    db.add(ChatMember(chat_id=chat.id, user_id=current_user.id))
+    db.commit()
+    return {"id": chat.id, "name": chat.name}
+
+
+@router.post("/dm")
+def create_dm_chat(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    username = (payload or {}).get("username", "").strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="username is required")
+    target = db.query(User).filter(User.username == username).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Create simple DM chat (no duplicate checks for simplicity)
+    name = f"{current_user.username or 'Вы'} & {target.username}"
+    chat = Chat(name=name)
+    db.add(chat)
+    db.commit()
+    db.refresh(chat)
+    db.add(ChatMember(chat_id=chat.id, user_id=current_user.id))
+    db.add(ChatMember(chat_id=chat.id, user_id=target.id))
+    db.commit()
+    return {"id": chat.id, "name": chat.name}
+

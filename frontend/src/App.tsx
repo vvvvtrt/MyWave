@@ -23,6 +23,9 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatsLoading, setChatsLoading] = useState(false);
+  // Places suggestions from backend
+  const [places, setPlaces] = useState<any[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -36,6 +39,17 @@ export default function App() {
       } finally {
       setLoading(false);
     }
+    })();
+  }, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await api.places.list();
+        setPlaces(list as any);
+      } catch (e) {
+        console.error('Error loading places:', e);
+        setPlaces([]);
+      }
     })();
   }, []);
 
@@ -206,6 +220,23 @@ export default function App() {
     }
   }
 
+  function handleStartJourneyFromPlace(place: any) {
+    const payload = { title: place.name, description: place.description, photos: [place.image] } as any;
+    handleCreatePost(payload);
+    setActiveTab('my');
+  }
+
+  async function handleTravelWithSomeone(place: any) {
+    try {
+      const created = await api.chats.create(place?.name || 'Путешествие');
+      setActiveTab('groups');
+      setSelectedChatId(created.id);
+    } catch (e) {
+      console.error('Error creating chat:', e);
+      setActiveTab('groups');
+    }
+  }
+
   async function handleAuth(credentials: any) {
     try {
       let response;
@@ -295,6 +326,14 @@ export default function App() {
               </div>
               
               <div className="flex items-center gap-4">
+                <div className="hidden md:flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="@никнейм"
+                    onKeyDown={async (e)=>{ const t=(e.target as HTMLInputElement); if((e as any).key==='Enter' && t.value.trim()){ try{ const dm=await api.chats.createDM(t.value.trim().replace(/^@/,'')); setActiveTab('groups'); setSelectedChatId(dm.id); t.value=''; }catch(err){ console.error('DM error', err);} } }}
+                    className="rounded-xl px-3 py-2 bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none text-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                  />
+                </div>
                 <button
                   onClick={() => setIsDarkMode(!isDarkMode)}
                   className="p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-100 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
@@ -382,7 +421,9 @@ export default function App() {
                   <h2 className="text-3xl font-bold text-slate-900 mb-2 dark:text-white">Чего хочется испытать сегодня?</h2>
                   <p className="text-slate-600 dark:text-white/70">Найди идеальное приключение для себя</p>
                 </div>
-                <div className="flex gap-3 mb-4">
+
+                {/* Search */}
+                <div className="flex gap-3 mb-3">
                   <input 
                     value={query} 
                     onChange={(e)=>setQuery(e.target.value)} 
@@ -396,6 +437,38 @@ export default function App() {
                     <Search className="w-5 h-5" />
                   </button>
                 </div>
+
+                {/* Category chips under search */}
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {['Популярные', 'Природа', 'Искусство', 'Еда', 'Спорт', 'Музыка', 'Книги', 'Путешествия'].map(suggestion => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setQuery(suggestion)}
+                      className="px-4 py-2 rounded-full bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 hover:border-gray-200/35 transition-colors text-sm backdrop-blur-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Places suggestions */}
+                <div className="mt-4">
+                  <h4 className="text-xl font-semibold mb-3">Предложения мест</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {places.map((p:any) => (
+                      <button key={p.id} onClick={() => setSelectedPlace(p)} className="group text-left rounded-2xl overflow-hidden border border-gray-200/25 bg-white/10 dark:bg-black/20 hover:bg-white/15 dark:hover:bg-black/30 transition-colors">
+                        <div className="aspect-video w-full overflow-hidden">
+                          <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />
+                        </div>
+                        <div className="p-3">
+                          <div className="font-semibold text-sm">{p.name}</div>
+                          <div className="text-xs text-slate-600 dark:text-white/70">{p.description}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
                 
                 <div className="flex flex-wrap gap-2">
                   {['Популярные', 'Природа', 'Искусство', 'Еда', 'Спорт', 'Музыка', 'Книги', 'Путешествия'].map(suggestion => (
@@ -444,7 +517,7 @@ export default function App() {
                   )}
                     </div>
                   )}
-                  {posts.filter((p: any) => activeTab==='my' ? p.author === 'Вы' : true).map((post: any) => (
+                  {posts.filter((p: any) => activeTab==='my' ? p.author === (currentUser?.username || 'Вы') : true).map((post: any) => (
                     <AdventureCard key={post.id} post={post} onLike={handleLike} onComment={handleAddComment} />
                   ))}
                 </>
@@ -546,6 +619,39 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Place Suggestion Modal */}
+      {selectedPlace && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedPlace(null)}></div>
+          <div className="relative bg-white/25 border border-gray-200/25 rounded-2xl p-0 w-full max-w-2xl overflow-hidden backdrop-blur-sm dark:bg-black/25 dark:border-black/25">
+            <div className="flex">
+              <div className="hidden md:block w-1/2 h-64 md:h-auto">
+                <img src={selectedPlace.image} alt={selectedPlace.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1 p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{selectedPlace.name}</h3>
+                    <p className="text-sm text-slate-600 dark:text-white/70">{selectedPlace.description}</p>
+                  </div>
+                  <button onClick={() => setSelectedPlace(null)} className="p-2 rounded-lg hover:bg-white/25 transition-colors">
+                    <X className="w-5 h-5 text-slate-700 dark:text-white" />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <button onClick={() => { handleTravelWithSomeone(selectedPlace); setSelectedPlace(null); }} className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 transition-colors backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35">
+                    Путешествовать с кем-то
+                  </button>
+                  <button onClick={() => { handleStartJourneyFromPlace(selectedPlace); setSelectedPlace(null); }} className="w-full px-4 py-3 rounded-xl bg-orange-500 border border-orange-600 hover:bg-orange-600 text-white font-semibold transition-colors">
+                    Начать моё путешествие
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Post Modal */}
       {showCreatePost && (
