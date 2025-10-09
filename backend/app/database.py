@@ -118,6 +118,16 @@ class Message(Base):
     author = relationship("User")
 
 
+class Friendship(Base):
+    __tablename__ = "friendships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    friend_id = Column(Integer, ForeignKey("users.id"), index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Note: simple unidirectional storage, queries will fetch both directions
+
 # Create tables (ensure models are defined above this line)
 Base.metadata.create_all(bind=engine)
 
