@@ -7,6 +7,10 @@ class UserBase(BaseModel):
     email: EmailStr
     username: str
     full_name: Optional[str] = None
+    city: Optional[str] = None
+    favorite_cuisine: Optional[str] = None
+    prefers: Optional[str] = Field(default=None, description="nature | architecture | both")
+    interests: Optional[str] = Field(default=None, description="free-form interests text")
 
 
 class UserCreate(UserBase):

@@ -26,7 +26,19 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { ...headers, ...(options?.headers || {}) },
     ...options,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  
+  if (!res.ok) {
+    let errorMessage = `HTTP ${res.status}`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData.detail || errorMessage;
+    } catch {
+      // If response is not JSON, use status text
+      errorMessage = res.statusText || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
+  
   return res.json();
 }
 

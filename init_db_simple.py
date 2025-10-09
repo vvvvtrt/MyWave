@@ -7,16 +7,41 @@ import sys
 import time
 import subprocess
 
+def get_container_name(service_name):
+    """Get the actual container name for a service"""
+    try:
+        result = subprocess.run([
+            'docker-compose', 'ps', '-q', service_name
+        ], capture_output=True, text=True)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            container_id = result.stdout.strip()
+            # Get container name from ID
+            name_result = subprocess.run([
+                'docker', 'inspect', '--format', '{{.Name}}', container_id
+            ], capture_output=True, text=True)
+            
+            if name_result.returncode == 0:
+                return name_result.stdout.strip().lstrip('/')
+    except Exception:
+        pass
+    
+    # Fallback to default naming convention
+    return f"meet-{service_name}-1"
+
 def wait_for_postgres():
     """Wait for PostgreSQL to be ready"""
     max_retries = 30
     retry_count = 0
     
+    postgres_container = get_container_name('postgres')
+    print(f"🔍 Using PostgreSQL container: {postgres_container}")
+    
     while retry_count < max_retries:
         try:
             # Test connection using psql
             result = subprocess.run([
-                'docker', 'exec', 'meet-postgres-1', 
+                'docker', 'exec', postgres_container, 
                 'psql', '-U', 'mywave', '-d', 'mywave', '-c', 'SELECT 1;'
             ], capture_output=True, text=True)
             
@@ -38,9 +63,12 @@ def create_tables():
     try:
         print("🔨 Creating database tables...")
         
+        backend_container = get_container_name('backend')
+        print(f"🔍 Using backend container: {backend_container}")
+        
         # Run the database initialization inside the backend container
         result = subprocess.run([
-            'docker', 'exec', 'meet-backend-1',
+            'docker', 'exec', backend_container,
             'python', '-c', '''
 import sys
 sys.path.append("/app")

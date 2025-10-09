@@ -250,9 +250,15 @@ export default function App() {
           email: credentials.email,
           username: credentials.name,
           password: credentials.password,
-          full_name: credentials.name
+          full_name: credentials.name,
+          city: credentials.city || undefined,
+          favorite_cuisine: credentials.favorite_cuisine || undefined,
+          prefers: credentials.prefers || undefined,
+          interests: credentials.interests || undefined
         };
+        console.log('Registering with data:', registerData);
         response = await api.register(registerData);
+        console.log('Registration response:', response);
       } else {
         // Для входа используем email как username
         const loginData = {
@@ -264,13 +270,18 @@ export default function App() {
       
       // Сохраняем токен
       localStorage.setItem('token', response.access_token);
+      console.log('Token saved:', response.access_token);
       
       // Получаем информацию о пользователе
       const userInfo = await api.getCurrentUser();
+      console.log('User info:', userInfo);
       setCurrentUser(userInfo);
       setIsAuthenticated(true);
+      console.log('Authentication state set to true');
     } catch (e) {
-      console.error(e);
+      console.error('Auth error:', e);
+      const errorMessage = e instanceof Error ? e.message : 'Неизвестная ошибка';
+      alert('Ошибка авторизации: ' + errorMessage);
     }
   }
 
@@ -719,7 +730,11 @@ function AuthForm({ onAuth }: { onAuth: (credentials: any) => void }) {
     email: '',
     password: '',
     name: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    city: '',
+    favorite_cuisine: '',
+    prefers: '',
+    interests: ''
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -780,15 +795,60 @@ function AuthForm({ onAuth }: { onAuth: (credentials: any) => void }) {
         </div>
 
         {mode === 'register' && (
-          <div>
-            <input
-              type="password"
-              placeholder="Подтвердите пароль"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-              className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-            />
-          </div>
+          <>
+            <div>
+              <input
+                type="password"
+                placeholder="Подтвердите пароль"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <input
+                type="text"
+                placeholder="Город"
+                value={formData.city}
+                onChange={(e) => setFormData({...formData, city: e.target.value})}
+                className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+              />
+
+              <input
+                type="text"
+                placeholder="Любимая кухня (например, итальянская)"
+                value={formData.favorite_cuisine}
+                onChange={(e) => setFormData({...formData, favorite_cuisine: e.target.value})}
+                className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+              />
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {value:'nature', label:'Тянет к природе'},
+                  {value:'architecture', label:'Тянет к архитектуре'},
+                  {value:'both', label:'Люблю и то, и другое'}
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={()=>setFormData({...formData, prefers: opt.value})}
+                    className={`px-4 py-2 rounded-full border text-sm transition-colors ${formData.prefers===opt.value ? 'bg-orange-500 border-orange-600 text-white' : 'bg-white/25 border-gray-200/25 text-slate-700 hover:bg-white/35 dark:bg-slate-800 dark:border-slate-700 dark:text-white'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                placeholder="Интересы (свободный текст)"
+                value={formData.interests}
+                onChange={(e) => setFormData({...formData, interests: e.target.value})}
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 placeholder:text-slate-500 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+              />
+            </div>
+          </>
         )}
 
         <button 

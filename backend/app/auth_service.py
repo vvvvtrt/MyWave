@@ -47,13 +47,17 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
     return db.query(User).filter(User.username == username).first()
 
-def create_user(db: Session, email: str, username: str, password: str, full_name: str = None) -> User:
+def create_user(db: Session, email: str, username: str, password: str, full_name: str = None, city: str = None, favorite_cuisine: str = None, prefers: str = None, interests: str = None) -> User:
     hashed_password = get_password_hash(password)
     user = User(
         email=email,
         username=username,
         hashed_password=hashed_password,
-        full_name=full_name
+        full_name=full_name,
+        city=city,
+        favorite_cuisine=favorite_cuisine,
+        prefers=prefers,
+        interests=interests
     )
     db.add(user)
     db.commit()

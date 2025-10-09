@@ -24,6 +24,10 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    favorite_cuisine = Column(String, nullable=True)
+    prefers = Column(String, nullable=True)  # nature | architecture | both
+    interests = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     

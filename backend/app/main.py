@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 import os
 from .config import settings
 from .routers import auth, posts, comments, groups, search, chats, places, friends
+from .database import engine
+from sqlalchemy import text, inspect
 
 app = FastAPI(title="MyWave API", version="0.1.0")
 
@@ -14,6 +16,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Simple migration for new user columns (works with Postgres and SQLite)
+try:
+    inspector = inspect(engine)
+    existing_cols = {col['name'] for col in inspector.get_columns('users')}
+    to_add = [
+        ("city", "VARCHAR"),
+        ("favorite_cuisine", "VARCHAR"),
+        ("prefers", "VARCHAR"),
+        ("interests", "TEXT"),
+    ]
+    if any(col not in existing_cols for col, _ in to_add):
+        with engine.begin() as conn:
+            for col, coltype in to_add:
+                if col not in existing_cols:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {coltype}"))
+except Exception:
+    # Best-effort; if it fails, the error will surface on insert
+    pass
 
 @app.get("/health")
 def health_check():

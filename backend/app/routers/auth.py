@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from ..database import get_db
 from ..models import User, UserCreate, UserLogin, Token, UserProfile
-from ..auth_service import authenticate_user, create_user, create_access_token, verify_token, get_user_by_email
+from ..auth_service import authenticate_user, create_user, create_access_token, verify_token, get_user_by_email, get_user_by_username
 from ..database import Chat, ChatMember, Message
 from ..config import settings
 
@@ -43,13 +43,24 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
     
+    # Check if username already exists
+    if get_user_by_username(db, user_data.username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
+        )
+    
     # Create user
     user = create_user(
         db=db,
         email=user_data.email,
         username=user_data.username,
         password=user_data.password,
-        full_name=user_data.full_name
+        full_name=user_data.full_name,
+        city=getattr(user_data, 'city', None),
+        favorite_cuisine=getattr(user_data, 'favorite_cuisine', None),
+        prefers=getattr(user_data, 'prefers', None),
+        interests=getattr(user_data, 'interests', None),
     )
     
     # Create access token
@@ -104,6 +115,10 @@ def read_users_me(current_user: User = Depends(get_current_user), db: Session = 
         email=current_user.email,
         username=current_user.username,
         full_name=current_user.full_name,
+        city=current_user.city,
+        favorite_cuisine=current_user.favorite_cuisine,
+        prefers=current_user.prefers,
+        interests=current_user.interests,
         is_active=current_user.is_active,
         created_at=current_user.created_at,
         posts_count=posts_count,
