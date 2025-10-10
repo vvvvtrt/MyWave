@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from .config import settings
-from .routers import auth, posts, comments, groups, search, chats, places, friends
+from .routers import auth, posts, comments, groups, search, chats, places, friends, survey
 
 app = FastAPI(title="MyWave API", version="0.1.0")
 
@@ -33,6 +33,7 @@ app.include_router(search.router, prefix="/search", tags=["search"])
 app.include_router(chats.router, prefix="/chats", tags=["chats"])
 app.include_router(places.router, prefix="/places", tags=["places"])
 app.include_router(friends.router, prefix="/friends", tags=["friends"])
+app.include_router(survey.router, prefix="/survey", tags=["survey"])
 
 
 

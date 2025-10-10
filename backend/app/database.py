@@ -128,6 +128,18 @@ class Friendship(Base):
 
     # Note: simple unidirectional storage, queries will fetch both directions
 
+class UserSurvey(Base):
+    __tablename__ = "user_surveys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True, nullable=False)
+    # Simple small questionnaire fields for recommendations
+    favorite_category = Column(String, nullable=True)  # e.g., nature, food, art
+    activity_level = Column(String, nullable=True)     # e.g., calm, moderate, active
+    budget_level = Column(String, nullable=True)       # e.g., low, medium, high
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 # Create tables (ensure models are defined above this line)
 Base.metadata.create_all(bind=engine)
 

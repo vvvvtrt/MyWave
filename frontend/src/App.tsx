@@ -26,6 +26,9 @@ export default function App() {
   // Places suggestions from backend
   const [places, setPlaces] = useState<any[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [surveyQuestions, setSurveyQuestions] = useState<any[]>([]);
+  const [surveyAnswers, setSurveyAnswers] = useState<Record<string,string>>({});
 
   useEffect(() => {
     (async () => {
@@ -269,6 +272,18 @@ export default function App() {
       const userInfo = await api.getCurrentUser();
       setCurrentUser(userInfo);
       setIsAuthenticated(true);
+
+      // After auth, check survey status
+      try {
+        const status = await api.survey.status();
+        if (!status.completed) {
+          const q = await api.survey.questions();
+          setSurveyQuestions(q.questions || []);
+          setShowSurvey(true);
+        }
+      } catch (e) {
+        // ignore
+      }
     } catch (e) {
       console.error(e);
     }
@@ -474,17 +489,7 @@ export default function App() {
                 </div>
                 
                 
-                <div className="flex flex-wrap gap-2">
-                  {['Популярные', 'Природа', 'Искусство', 'Еда', 'Спорт', 'Музыка', 'Книги', 'Путешествия'].map(suggestion => (
-                    <button
-                      key={suggestion}
-                            onClick={() => setQuery(suggestion)}
-                      className="px-4 py-2 rounded-full bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 hover:border-gray-200/35 transition-colors text-sm backdrop-blur-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-              </div>
+                
 
                       {showLLMChat && (
                         <div className="mt-6 rounded-2xl border border-gray-200/25 bg-white/10 dark:bg-black/20 flex flex-col overflow-hidden">
@@ -706,6 +711,28 @@ export default function App() {
         <ProfileModal 
           user={currentUser}
           onClose={() => setShowProfile(false)}
+        />
+      )}
+
+      {/* Survey Modal */}
+      {showSurvey && (
+        <SurveyModal 
+          questions={surveyQuestions}
+          answers={surveyAnswers}
+          onChange={(id: string, value: string) => setSurveyAnswers(prev => ({ ...prev, [id]: value }))}
+          onSubmit={async () => {
+            try {
+              await api.survey.submit({
+                favorite_category: surveyAnswers.favorite_category,
+                activity_level: surveyAnswers.activity_level,
+                budget_level: surveyAnswers.budget_level,
+              });
+              setShowSurvey(false);
+            } catch (e) {
+              // keep modal open
+            }
+          }}
+          onClose={() => setShowSurvey(false)}
         />
       )}
     </div>
@@ -1335,6 +1362,51 @@ function ProfileModal({ user, onClose }: { user: any, onClose: () => void }) {
               Создаю воспоминания через приключения и делюсь ими с миром.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SurveyModal({ questions, answers, onChange, onSubmit, onClose }: { questions: any[], answers: Record<string,string>, onChange: (id: string, value: string)=>void, onSubmit: ()=>void, onClose: ()=>void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="relative bg-white/25 border border-gray-200/25 rounded-2xl p-6 w-full max-w-md backdrop-blur-sm dark:bg-black/25 dark:border-black/25">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">Короткий опрос</h3>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/25 transition-colors">
+            <X className="w-5 h-5 text-slate-700 dark:text-white" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          {questions.map((q:any)=> (
+            <div key={q.id}>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">{q.label}</label>
+              {q.type === 'select' ? (
+                <select
+                  value={answers[q.id] || ''}
+                  onChange={(e)=> onChange(q.id, e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                >
+                  <option value="" disabled>Выберите...</option>
+                  {(q.options||[]).map((opt:string)=> (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={answers[q.id] || ''}
+                  onChange={(e)=> onChange(q.id, e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 transition-colors backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35">Позже</button>
+          <button onClick={onSubmit} className="flex-1 px-4 py-3 rounded-xl bg-orange-500 border border-orange-600 hover:bg-orange-600 text-white font-semibold transition-colors">Готово</button>
         </div>
       </div>
     </div>

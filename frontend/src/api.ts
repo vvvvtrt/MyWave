@@ -75,6 +75,12 @@ export const api = {
     createDM: (username: string) => http<{ id: number; name: string }>(`/chats/dm`, { method: 'POST', body: JSON.stringify({ username }) }),
   },
   search: (q: string) => http<Post[]>(`/search/?q=${encodeURIComponent(q)}`),
+  survey: {
+    status: () => http<{ completed: boolean }>(`/survey/status`),
+    questions: () => http<{ questions: Array<{ id: string; label: string; type: string; options?: string[] }> }>(`/survey/questions`),
+    submit: (payload: { favorite_category?: string; activity_level?: string; budget_level?: string }) =>
+      http<{ status: string }>(`/survey/`, { method: 'POST', body: JSON.stringify(payload) }),
+  },
 };
 
 
