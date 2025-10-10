@@ -78,9 +78,12 @@ export const api = {
   survey: {
     status: () => http<{ completed: boolean }>(`/survey/status`),
     questions: () => http<{ questions: Array<{ id: string; label: string; type: string; options?: string[] }> }>(`/survey/questions`),
-    submit: (payload: { favorite_category?: string; activity_level?: string; budget_level?: string }) =>
+    submit: (payload: { favorite_category?: string; activity_level?: string; budget_level?: string; city?: string }) =>
       http<{ status: string }>(`/survey/`, { method: 'POST', body: JSON.stringify(payload) }),
   },
+  recs: {
+    list: () => http<Post[]>(`/recs/`),
+  }
 };
 
 

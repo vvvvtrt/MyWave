@@ -13,6 +13,7 @@ class SurveyPayload(BaseModel):
     favorite_category: Optional[str] = None
     activity_level: Optional[str] = None
     budget_level: Optional[str] = None
+    city: Optional[str] = None
 
 
 @router.get("/status")
@@ -31,6 +32,11 @@ def survey_questions():
                 "label": "Что вам ближе?",
                 "type": "select",
                 "options": ["Природа", "Еда", "Искусство", "Спорт", "Музыка", "Книги", "Путешествия"],
+            },
+            {
+                "id": "city",
+                "label": "Ваш город",
+                "type": "text",
             },
             {
                 "id": "activity_level",
@@ -56,6 +62,7 @@ def submit_survey(payload: SurveyPayload, current_user=Depends(get_current_user)
         existing.favorite_category = payload.favorite_category
         existing.activity_level = payload.activity_level
         existing.budget_level = payload.budget_level
+        existing.city = payload.city
         db.add(existing)
         db.commit()
         db.refresh(existing)
@@ -66,6 +73,7 @@ def submit_survey(payload: SurveyPayload, current_user=Depends(get_current_user)
         favorite_category=payload.favorite_category,
         activity_level=payload.activity_level,
         budget_level=payload.budget_level,
+        city=payload.city,
     )
     db.add(survey)
     db.commit()

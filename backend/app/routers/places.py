@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
 from random import choice
+from ..osm_recommender import OSMPlaceParser
 
 
 router = APIRouter()
@@ -25,7 +26,23 @@ _IMAGES = [
 
 
 @router.get("/")
-def list_places():
+def list_places(city: str = Query("Saint Petersburg")):
+    # Try to return real places from local OSM DB; fallback to mock
+    try:
+        parser = OSMPlaceParser(db_path='places.db')
+        places = parser.get_places_from_db(city)
+        if places:
+            return [
+                {
+                    "id": p["id"],
+                    "name": p["name"],
+                    "image": p["image_url"] or choice(_IMAGES),
+                    "description": p["description"] or "Подходит для прогулки и вдохновения",
+                }
+                for p in places[:32]
+            ]
+    except Exception:
+        pass
     items = []
     for i in range(8):
         name = choice(_NAMES)

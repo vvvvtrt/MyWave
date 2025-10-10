@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from ..database import get_db
 from ..models import User, UserCreate, UserLogin, Token, UserProfile
-from ..auth_service import authenticate_user, create_user, create_access_token, verify_token, get_user_by_email
+from ..auth_service import authenticate_user, create_user, create_access_token, verify_token, get_user_by_email, get_user_by_username
 from ..database import Chat, ChatMember, Message
 from ..config import settings
 
@@ -36,11 +36,18 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 @router.post("/register", response_model=Token)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    # Check if user already exists
+    # Check if email already exists
     if get_user_by_email(db, user_data.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
+        )
+    
+    # Check if username already exists
+    if get_user_by_username(db, user_data.username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
         )
     
     # Create user

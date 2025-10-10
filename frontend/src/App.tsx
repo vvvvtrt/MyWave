@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { api } from "./api";
 import { Camera, MapPin, Heart, MessageCircle, Share2, Home, Users, Plus, Search, Menu, Eye, EyeOff, Sun, Moon, X } from "lucide-react";
+import { MiniMap as MapComponent, MapModal } from "./components/Map";
 
 export default function App() {
   const [query, setQuery] = useState("");
@@ -29,6 +30,8 @@ export default function App() {
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyQuestions, setSurveyQuestions] = useState<any[]>([]);
   const [surveyAnswers, setSurveyAnswers] = useState<Record<string,string>>({});
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapPoints, setMapPoints] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -284,6 +287,16 @@ export default function App() {
       } catch (e) {
         // ignore
       }
+
+      // Load recommendations
+      try {
+        const recPosts = await api.recs.list();
+        if (Array.isArray(recPosts) && recPosts.length > 0) {
+          setPosts(recPosts as any);
+        }
+      } catch (e) {
+        // ignore
+      }
     } catch (e) {
       console.error(e);
     }
@@ -486,6 +499,26 @@ export default function App() {
                       </button>
                     ))}
                   </div>
+                  
+                  {/* Places Map */}
+                  {places.length > 0 && (
+                    <div className="mt-6">
+                      <h5 className="text-lg font-semibold mb-3">Места на карте</h5>
+                      <div className="rounded-2xl overflow-hidden border border-gray-200/25 bg-white/10 dark:bg-black/20">
+                      <div style={{height: '300px'}}>
+                        <MapComponent 
+                          points={places.map((p: any, index: number) => ({
+                            id: p.id || index,
+                            name: p.name,
+                            lat: 55.7558 + (Math.random() - 0.5) * 0.1, // Mock coordinates around Moscow
+                            lng: 37.6173 + (Math.random() - 0.5) * 0.1,
+                            description: p.description
+                          }))}
+                        />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 
@@ -527,7 +560,16 @@ export default function App() {
                     </div>
                   )}
                   {posts.filter((p: any) => activeTab==='my' ? p.author === (currentUser?.username || 'Вы') : true).map((post: any) => (
-                    <AdventureCard key={post.id} post={post} onLike={handleLike} onComment={handleAddComment} />
+                    <AdventureCard 
+                      key={post.id} 
+                      post={{...post, route: post.route || sampleRoute(3)}} 
+                      onLike={handleLike} 
+                      onComment={handleAddComment}
+                      onMapClick={(points) => {
+                        setMapPoints(points);
+                        setShowMapModal(true);
+                      }}
+                    />
                   ))}
                 </>
               )}
@@ -726,8 +768,16 @@ export default function App() {
                 favorite_category: surveyAnswers.favorite_category,
                 activity_level: surveyAnswers.activity_level,
                 budget_level: surveyAnswers.budget_level,
+                city: surveyAnswers.city,
               });
               setShowSurvey(false);
+              // reload recs targeting city
+              try {
+                const recPosts = await api.recs.list();
+                if (Array.isArray(recPosts) && recPosts.length > 0) {
+                  setPosts(recPosts as any);
+                }
+              } catch {}
             } catch (e) {
               // keep modal open
             }
@@ -735,6 +785,14 @@ export default function App() {
           onClose={() => setShowSurvey(false)}
         />
       )}
+
+      {/* Map Modal */}
+      <MapModal 
+        points={mapPoints}
+        isOpen={showMapModal}
+        onClose={() => setShowMapModal(false)}
+        title="Маршрут на карте"
+      />
     </div>
     </div>
   );
@@ -838,7 +896,7 @@ function AuthForm({ onAuth }: { onAuth: (credentials: any) => void }) {
   );
 }
 
-function AdventureCard({ post, onLike, onComment }: { post: any, onLike: (id: any) => void, onComment: (id: any, text: string) => void }) {
+function AdventureCard({ post, onLike, onComment, onMapClick }: { post: any, onLike: (id: any) => void, onComment: (id: any, text: string) => void, onMapClick?: (points: any[]) => void }) {
   const [comment, setComment] = useState('');
   const [showAllPhotos, setShowAllPhotos] = useState(false);
 
@@ -902,9 +960,19 @@ function AdventureCard({ post, onLike, onComment }: { post: any, onLike: (id: an
       )}
 
       {/* Route Map */}
-      <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-black/25">
-        <MiniMap route={post.route} />
-      </div>
+      {post.route && post.route.length > 0 && (
+        <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-black/25">
+          <MapComponent 
+            points={post.route.map((point: any, index: number) => ({
+              id: index,
+              name: point.name || `Точка ${index + 1}`,
+              lat: point.lat,
+              lng: point.lng,
+              description: point.description
+            }))}
+          />
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200 dark:border-black/25">
@@ -925,7 +993,25 @@ function AdventureCard({ post, onLike, onComment }: { post: any, onLike: (id: an
         </div>
         <div className="flex items-center gap-1 text-slate-600 text-xs dark:text-white/70">
           <MapPin className="w-3 h-3" />
-          {post.route.length} точек
+          {post.route?.length || 0} точек
+          {post.route && post.route.length > 0 && (
+            <button 
+              onClick={() => {
+                if (onMapClick) {
+                  onMapClick(post.route.map((point: any, index: number) => ({
+                    id: index,
+                    name: point.name || `Точка ${index + 1}`,
+                    lat: point.lat,
+                    lng: point.lng,
+                    description: point.description
+                  })));
+                }
+              }}
+              className="ml-2 text-orange-500 hover:text-orange-600 text-xs underline"
+            >
+              Открыть карту
+            </button>
+          )}
         </div>
       </div>
 
@@ -962,48 +1048,6 @@ function AdventureCard({ post, onLike, onComment }: { post: any, onLike: (id: an
   );
 }
 
-function MiniMap({ route }: { route: any[] }) {
-  const w = 680, h = 120;
-  const points = route.map((_p: any, i: number) => `${20 + i*120},${20 + (i%2?50:25)}`).join(' ');
-  
-  return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-32 bg-gradient-to-r from-blue-900/20 to-purple-900/20">
-        <defs>
-          <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#FB923C" />
-            <stop offset="50%" stopColor="#F59E0B" />
-            <stop offset="100%" stopColor="#EF4444" />
-          </linearGradient>
-        </defs>
-        <polyline 
-          points={points} 
-          fill="none" 
-          stroke="url(#routeGradient)" 
-          strokeWidth="4" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-        />
-        {route.map((_r: any, i: number) => (
-          <circle 
-            key={i} 
-            cx={20 + i*120} 
-            cy={20 + (i%2?60:30)} 
-            r={8} 
-            fill="#fff" 
-            stroke="url(#routeGradient)" 
-            strokeWidth={3} 
-          />
-        ))}
-      </svg>
-      <div className="absolute right-4 bottom-4">
-        <button className="px-4 py-2 rounded-full bg-white/25 border border-gray-200/25 text-slate-700 hover:bg-white/35 transition-colors backdrop-blur-sm dark:backdrop-blur-sm dark:bg-black/25 dark:border-black/25 dark:text-white dark:hover:bg-black/35">
-          Открыть карту
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function AnimatedBackground() {
   return (
@@ -1145,13 +1189,14 @@ function SeaLoading() {
 
 // mockGroups removed: replaced by live chats UI in 'groups' tab
 
-// function sampleRoute(n=3) {
-//   return Array.from({length:n}).map((_,i)=>({
-//     lat:55.7 + i*0.002, 
-//     lng:37.6 + i*0.003, 
-//     name:`Точка ${i+1}`
-//   }));
-// }
+function sampleRoute(n=3) {
+  return Array.from({length:n}).map((_,i)=>({
+    lat:55.7558 + (Math.random() - 0.5) * 0.02, 
+    lng:37.6173 + (Math.random() - 0.5) * 0.02, 
+    name:`Точка ${i+1}`,
+    description: `Описание точки ${i+1}`
+  }));
+}
 
 function formatDate(ts: number) {
   const d = new Date(ts);
@@ -1399,6 +1444,7 @@ function SurveyModal({ questions, answers, onChange, onSubmit, onClose }: { ques
                   value={answers[q.id] || ''}
                   onChange={(e)=> onChange(q.id, e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-white/25 border border-gray-200/25 text-slate-900 outline-none focus:border-orange-400 transition-colors backdrop-blur-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                  placeholder={q.id==='city' ? 'Например: Saint Petersburg' : ''}
                 />
               )}
             </div>

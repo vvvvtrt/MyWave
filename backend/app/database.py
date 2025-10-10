@@ -137,6 +137,7 @@ class UserSurvey(Base):
     favorite_category = Column(String, nullable=True)  # e.g., nature, food, art
     activity_level = Column(String, nullable=True)     # e.g., calm, moderate, active
     budget_level = Column(String, nullable=True)       # e.g., low, medium, high
+    city = Column(String, nullable=True)               # user city for places search
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
