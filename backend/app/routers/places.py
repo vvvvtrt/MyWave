@@ -7,21 +7,25 @@ router = APIRouter()
 
 
 _NAMES = [
-    "Набережная у моста",
-    "Уютная кофейня",
-    "Старый дворик",
-    "Галерея современного искусства",
-    "Смотровая площадка",
-    "Парк на холме",
+    "Мгновение гармонии",
+    "Точка вдохновения",
+    "Сокровище воспоминаний",
+    "Светлое пространство",
+    "Тайна покоя",
+    "Оазис мечты",
+    "Вдохновляющий вид",
+    "Эхо истории",
+    "Пространство уединения",
+    "Незабудка момента",
 ]
 
 _IMAGES = [
-    "https://images.unsplash.com/photo-1505761671935-60b3a7427bad?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1491553895911-0055eca6402d?q=80&w=1200&auto=format&fit=crop",
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRn0vHkKa6sM1YZcYrbB84uNeD6620LmAkr2A&s",
+    "https://www.multitour.ru/files/out/topplace-moscow/Moskovskii_universitet/Moskovskii_universitet_3.jpg",
+    "https://mperspektiva.ru/upload/resize_cache/webp/iblock/771/77188ea7a4ad4a2175860a0d25ce4e28.webp",
+    "https://moscowchronology.ru/sites/default/files/images/about/O_Moskve_119.jpg",
+    "https://geopro-photos.storage.yandexcloud.net/h-editor/imgs/a92/a92f7a985315377fb8615dc69de04074/4kopiya_4.jpg",
+    "https://cdn.7days.ru/pic/c65/941842/565812/86.jpg",
 ]
 
 

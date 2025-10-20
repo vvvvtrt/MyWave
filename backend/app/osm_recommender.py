@@ -244,6 +244,27 @@ class OSMPlaceParser:
                 'lat': row[7], 'lon': row[8], 'image_url': row[9]
             })
         conn.close()
+        if not places:
+            # Fallback to Overpy if nothing in DB, and try to fill DB on-the-fly
+            if self.api is not None:
+                center = self._get_city_center(city, 'Russia')
+                if center:
+                    lat, lon = center
+                    radius = 20 * 1000
+                    if category:
+                        tags = self.osm_categories.get(category, [])
+                    else:
+                        tags = [tag for tags_list in self.osm_categories.values() for tag in tags_list]
+                    new_places = []
+                    for tag in tags:
+                        try:
+                            fetched = self._fetch_places(lat, lon, radius, tag, category or 'unknown', city)
+                            self._save_places(fetched)
+                            new_places.extend(fetched)
+                        except Exception:
+                            pass
+                    # Повторяем выборку уже из БД, чтобы гарантировать корректный формат
+                    return self.get_places_from_db(city, category)
         return places
 
 

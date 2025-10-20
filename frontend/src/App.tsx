@@ -355,53 +355,7 @@ export default function App() {
                   <Menu className="w-5 h-5 text-white" />
                 </button>
                 
-                <div className="flex items-center flex-1 justify-start">
-                  <svg
-                    viewBox="0 0 500 130"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="moya-volna-logo w-[260px] md:w-[320px] h-[70px]"
-                    aria-label="Моя волна — социальная сеть для путешествий и ИИ"
-                  >
-                    <defs>
-                      <linearGradient id="gradStroke" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#ffffff" />
-                        <stop offset="50%" stopColor="#ffa726" />
-                        <stop offset="100%" stopColor="#ffffff" />
-                      </linearGradient>
-
-                      <linearGradient id="gradFill" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#fff7e6" />
-                        <stop offset="100%" stopColor="#ffa726" />
-                      </linearGradient>
-
-              
-                      <filter id="waveFilter">
-                        <feTurbulence type="fractalNoise" baseFrequency="0.015 0.03" numOctaves="2" result="noise" />
-                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G" />
-                      </filter>
-                    </defs>
-
-                    <text
-                      x="50%"
-                      y="68%"
-                      textAnchor="middle"
-                      className="draw-text"
-                      filter="url(#waveFilter)"
-                    >
-                      Моя волна
-                    </text>
-
-                    <text
-                      x="50%"
-                      y="68%"
-                      textAnchor="middle"
-                      className="fill-text"
-                      filter="url(#waveFilter)"
-                    >
-                      Моя волна
-                    </text>
-                  </svg>
-                </div>
+                <h1>Моя Волна</h1>
 
 
               </div>
