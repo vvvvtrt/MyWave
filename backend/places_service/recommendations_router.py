@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from random import choice, randint, sample
 from typing import List, Dict
-from ..database import get_db, User
-from ..routers.auth import get_current_user
-from ..database import UserSurvey
-from ..osm_recommender import TravelRecommender
+from database import get_db, User
+from auth import get_current_user
+from database import UserSurvey
+from osm_recommender import TravelRecommender
 
 
 router = APIRouter()
@@ -47,7 +47,6 @@ def get_recommendations_endpoint(current_user: User = Depends(get_current_user),
 
     # If recommender returns nothing, fallback to empty
     return posts
-
 
 
 

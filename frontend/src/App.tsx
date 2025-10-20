@@ -359,7 +359,8 @@ export default function App() {
                   <svg
                     viewBox="0 0 500 130"
                     xmlns="http://www.w3.org/2000/svg"
-                    className="moya-volna-logo w-[260px] md:w-[320px] h-[70px]"
+                    className="moya-volna-logo w-[240px] md:w-[300px] h-[70px]"
+                    style={{ marginLeft: 0 }}
                     aria-label="Моя волна — социальная сеть для путешествий и ИИ"
                   >
                     <defs>
@@ -368,33 +369,28 @@ export default function App() {
                         <stop offset="50%" stopColor="#ffa726" />
                         <stop offset="100%" stopColor="#ffffff" />
                       </linearGradient>
-
                       <linearGradient id="gradFill" x1="0%" y1="0%" x2="0%" y2="100%">
                         <stop offset="0%" stopColor="#fff7e6" />
                         <stop offset="100%" stopColor="#ffa726" />
                       </linearGradient>
-
-              
                       <filter id="waveFilter">
-                        <feTurbulence type="fractalNoise" baseFrequency="0.015 0.03" numOctaves="2" result="noise" />
-                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G" />
+                        <feTurbulence type="fractalNoise" baseFrequency="0.03 0.08" numOctaves="3" result="noise"/>
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
                       </filter>
                     </defs>
-
                     <text
-                      x="50%"
+                      x="8%"
                       y="68%"
-                      textAnchor="middle"
+                      textAnchor="start"
                       className="draw-text"
                       filter="url(#waveFilter)"
                     >
                       Моя волна
                     </text>
-
                     <text
-                      x="50%"
+                      x="8%"
                       y="68%"
-                      textAnchor="middle"
+                      textAnchor="start"
                       className="fill-text"
                       filter="url(#waveFilter)"
                     >
