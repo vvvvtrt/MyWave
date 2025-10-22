@@ -17,7 +17,8 @@ def list_posts(
     db: Session = Depends(get_db)
 ):
     offset = (page - 1) * limit
-    posts = db.query(PostModel).offset(offset).limit(limit).all()
+    # Сортировка — сначала новые посты
+    posts = db.query(PostModel).order_by(PostModel.created_at.desc()).offset(offset).limit(limit).all()
     
     result = []
     for post in posts:

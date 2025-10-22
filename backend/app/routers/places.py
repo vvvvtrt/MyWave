@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 from random import choice
-from ..osm_recommender import OSMPlaceParser
+from ..osm_recommender import OSMPlaceParser, ImageSearcher
+import requests
+import urllib.parse
 
 
 router = APIRouter()
@@ -28,29 +30,94 @@ _IMAGES = [
     "https://cdn.7days.ru/pic/c65/941842/565812/86.jpg",
 ]
 
+API_ENDPOINT = "https://commons.wikimedia.org/w/api.php"
+
+def find_commons_image(query, thumb_width=640):
+    """
+    Ищет первый релевантный файл в Wikimedia Commons по текстовому запросу.
+    Возвращает URL миниатюры (если доступна) или прямой URL на файл.
+    Если ничего не найдено — возвращает placeholder с текстом запроса.
+    """
+    params = {
+        "action": "query",
+        "format": "json",
+        "generator": "search",
+        "gsrsearch": query,
+        "gsrnamespace": "6",
+        "gsrlimit": "1",
+        "prop": "imageinfo",
+        "iiprop": "url|mime|extmetadata",
+        "iiurlwidth": str(thumb_width),
+    }
+    try:
+        resp = requests.get(API_ENDPOINT, params=params, timeout=10)
+    except requests.RequestException as e:
+        return placeholder_url(query)
+    if resp.status_code != 200:
+        return placeholder_url(query)
+    data = resp.json()
+    pages = data.get("query", {}).get("pages", {})
+    if not pages:
+        return placeholder_url(query)
+    page = next(iter(pages.values()))
+    imageinfo = page.get("imageinfo", [])
+    if not imageinfo:
+        return placeholder_url(query)
+    info = imageinfo[0]
+    thumb = info.get("thumburl") or info.get("iiurl") or info.get("url") or info.get("imageurl")
+    if thumb:
+        return thumb
+    direct = info.get("url")
+    if direct:
+        return direct
+    return placeholder_url(query)
+
+def placeholder_url(query, w=640, h=400):
+    text = urllib.parse.quote_plus(query)
+    return f"https://placehold.co/{w}x{h}?text={text}"
+
+def extract_russian_place_name(p):
+    # Приоритет: name_ru (или name:ru в tags), затем name, потом переводить name_en (если захочется)
+    name = p.get("name_ru") or p.get("name") or p.get("name_en")
+    return name
+
 
 @router.get("/")
-def list_places(city: str = Query("Saint Petersburg")):
+def list_places(city: str = Query("Moscow")):
     # Try to return real places from local OSM DB; fallback to mock
     try:
         parser = OSMPlaceParser(db_path='places.db')
         places = parser.get_places_from_db(city)
+        import random
         if places:
-            return [
-                {
+            result = []
+            # Честная выборка: случайная уникальная восьмерка
+            if len(places) > 8:
+                sample_places = random.sample(places, 8)
+            else:
+                random.shuffle(places)
+                sample_places = places
+            for p in sample_places:
+                name = extract_russian_place_name(p)
+                image = p.get("image_url")
+                if not image:
+                    image = find_commons_image(f"{name} {city}")
+                if not image:
+                    image = placeholder_url(name)
+                description = p.get("description") or "Подходит для прогулки и вдохновения"
+                result.append({
                     "id": p["id"],
-                    "name": p["name"],
-                    "image": p["image_url"] or choice(_IMAGES),
-                    "description": p["description"] or "Подходит для прогулки и вдохновения",
-                }
-                for p in places[:32]
-            ]
+                    "name": name,
+                    "image": image,
+                    "description": description,
+                })
+            return result
     except Exception:
         pass
     items = []
     for i in range(8):
         name = choice(_NAMES)
-        img = choice(_IMAGES)
+        img = find_commons_image(f"{name} {city}")
         items.append({
             "id": i + 1,
             "name": name,
